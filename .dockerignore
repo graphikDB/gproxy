@@ -1,0 +1,7 @@
+vendor
+images
+*.md
+Makefile
+.env
+bin
+assets
