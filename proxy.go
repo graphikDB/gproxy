@@ -33,7 +33,7 @@ func init() {
 }
 
 // RouterFunc takes a hostname and returns an endpoint to route to
-type RouterFunc func(host string) string
+type RouterFunc func(ctx context.Context, host string) string
 
 // Middleware is an http middleware
 type Middleware func(handler http.Handler) http.Handler
@@ -253,7 +253,7 @@ func (p *Proxy) gRPCDirector() proxy.StreamDirector {
 		if ok {
 			if val, exists := md[":authority"]; exists && val[0] != "" {
 				now := time.Now()
-				target := p.gRPCRouter(val[0])
+				target := p.gRPCRouter(ctx, val[0])
 				fields := []zap.Field{
 					zap.String("proxy", "gRPC"),
 					zap.Any("metadata", md),
@@ -280,7 +280,7 @@ func (p *Proxy) gRPCDirector() proxy.StreamDirector {
 func (p *Proxy) httpDirector() func(r *http.Request) {
 	return func(req *http.Request) {
 		now := time.Now()
-		target := p.httpRouter(req.Host)
+		target := p.httpRouter(req.Context(), req.Host)
 		fields := []zap.Field{
 			zap.String("proxy", "http"),
 			zap.String("host", req.Host),

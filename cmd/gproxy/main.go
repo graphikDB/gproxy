@@ -72,7 +72,7 @@ func main() {
 				return
 			}
 		}
-		opts = append(opts, gproxy.WithGRPCRoutes(func(host string) string {
+		opts = append(opts, gproxy.WithGRPCRoutes(func(ctx context.Context, host string) string {
 			return grpcRouter[host]
 		}))
 	}
@@ -83,7 +83,7 @@ func main() {
 				return
 			}
 		}
-		opts = append(opts, gproxy.WithHTTPRoutes(func(host string) string {
+		opts = append(opts, gproxy.WithHTTPRoutes(func(ctx context.Context, host string) string {
 			return httpRouter[host]
 		}))
 	}
