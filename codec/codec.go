@@ -1,6 +1,13 @@
-package gproxy
+package codec
 
-import "google.golang.org/grpc"
+import (
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/encoding"
+)
+
+func NewGrpcCodec() encoding.Codec {
+	return &proxyCodec{}
+}
 
 type proxyCodec struct {
 	codec grpc.Codec

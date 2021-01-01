@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"github.com/autom8ter/machine"
+	"github.com/graphikDB/gproxy/codec"
 	"github.com/graphikDB/gproxy/logger"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/mwitkow/grpc-proxy/proxy"
@@ -29,7 +30,7 @@ import (
 )
 
 func init() {
-	encoding.RegisterCodec(&proxyCodec{codec: proxy.Codec()})
+	encoding.RegisterCodec(codec.NewGrpcCodec())
 }
 
 // RouterFunc takes a hostname and returns an endpoint to route to
@@ -132,7 +133,7 @@ func (p *Proxy) Serve(ctx context.Context) error {
 
 	p.mach.Go(func(routine machine.Routine) {
 		matcher := imux.Match(cmux.Any())
-		p.logger.Info("starting http server", zap.String("address", matcher.Addr().String()))
+		p.logger.Debug("starting http server", zap.String("address", matcher.Addr().String()))
 		if err := httpServer.Serve(matcher); err != nil && err != http.ErrServerClosed {
 			p.logger.Error("http proxy failure", zap.Error(err))
 		}
@@ -147,7 +148,7 @@ func (p *Proxy) Serve(ctx context.Context) error {
 
 	p.mach.Go(func(routine machine.Routine) {
 		matcher := smux.Match(cmux.Any())
-		p.logger.Info("starting secure http server", zap.String("address", matcher.Addr().String()))
+		p.logger.Debug("starting secure http server", zap.String("address", matcher.Addr().String()))
 		if err := tlsHttpServer.Serve(matcher); err != nil && err != http.ErrServerClosed {
 			p.logger.Error("TLS http proxy failure", zap.Error(err))
 		}
@@ -169,7 +170,7 @@ func (p *Proxy) Serve(ctx context.Context) error {
 		gserver := grpc.NewServer(gopts...)
 		p.mach.Go(func(routine machine.Routine) {
 			matcher := imux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
-			p.logger.Info("starting gRPC server", zap.String("address", matcher.Addr().String()))
+			p.logger.Debug("starting gRPC server", zap.String("address", matcher.Addr().String()))
 			if err := gserver.Serve(matcher); err != nil {
 				p.logger.Error("gRPC proxy failure", zap.Error(err))
 			}
@@ -190,7 +191,7 @@ func (p *Proxy) Serve(ctx context.Context) error {
 		tlsGserver := grpc.NewServer(gopts...)
 		p.mach.Go(func(routine machine.Routine) {
 			matcher := smux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
-			p.logger.Info("starting secure gRPC server", zap.String("address", matcher.Addr().String()))
+			p.logger.Debug("starting secure gRPC server", zap.String("address", matcher.Addr().String()))
 			if err := tlsGserver.Serve(matcher); err != nil {
 				p.logger.Error("TLS gRPC proxy failure", zap.Error(err))
 			}
@@ -228,7 +229,7 @@ func (p *Proxy) Serve(ctx context.Context) error {
 		p.mach.Close()
 		break
 	}
-	p.logger.Warn("shutdown signal received")
+	p.logger.Debug("shutdown signal received")
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer shutdownCancel()
 	wg := &sync.WaitGroup{}
