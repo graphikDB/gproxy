@@ -6,6 +6,7 @@ require (
 	github.com/autom8ter/machine v1.1.2
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/go-cmp v0.5.4 // indirect
+	github.com/graphikDB/trigger v0.0.14
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/mwitkow/grpc-proxy v0.0.0-20181017164139-0f1106ef9c76
@@ -13,6 +14,7 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spf13/pflag v1.0.5
+	github.com/spf13/viper v1.7.1
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/lint v0.0.0-20201208152925-83fdc39ff7b5 // indirect

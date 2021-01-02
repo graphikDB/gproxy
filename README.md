@@ -33,3 +33,32 @@ a library for creating lets-encrypt secured gRPC and http reverse proxies
 		return
 	}
 ```
+
+# GProxy Service
+
+    docker pull graphikDB:gproxy:v0.0.2
+    
+default config path: gproxy.yaml
+
+## Example Config
+
+```yaml
+debug: true
+autocert:
+  - "www.example.com"
+routing:
+  http:
+    - "this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
+server:
+  insecure_port: 8080
+  secure_port: 443
+cors:
+  origins: "*"
+  methods: "*"
+  headers:
+    - "GET"
+    - "POST"
+    - "PUT"
+    - "DELETE"
+    - "PATCH"
+```

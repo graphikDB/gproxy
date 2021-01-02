@@ -10,7 +10,7 @@ help:
 	@echo "----------------------------------------------------------------"
 
 run:
-	@go run cmd/gproxy/main.go --insecure-port 8080 --http-routes "localhost:8080=http://localhost:7821" --allow-domains="localhost" --debug
+	@go run cmd/gproxy/main.go
 
 patch: ## bump sem version by 1 patch
 	bumpversion patch --allow-dirty

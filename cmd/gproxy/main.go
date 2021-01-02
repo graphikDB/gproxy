@@ -2,48 +2,65 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/graphikDB/gproxy"
 	"github.com/graphikDB/gproxy/helpers"
 	"github.com/graphikDB/gproxy/logger"
+	"github.com/graphikDB/trigger"
 	"github.com/pkg/errors"
 	"github.com/rs/cors"
 	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"net/url"
 )
 
 func init() {
-	pflag.CommandLine.BoolVar(&debug, "debug", helpers.BoolEnvOr("GPROXY_DEBUG", false), "enable debug logs (env: GPROXY_DEBUG)")
-	pflag.CommandLine.IntVar(&insecurePort, "insecure-port", helpers.IntEnvOr("GPROXY_INSECURE_PORT", 80), "insecure port to serve on (env: GPROXY_INSECURE_PORT)")
-	pflag.CommandLine.IntVar(&securePort, "secure-port", helpers.IntEnvOr("GPROXY_SECURE_PORT", 443), "secure port to serve on (env: GPROXY_SECURE_PORT)")
+	pflag.CommandLine.StringVar(&configFile, "config", helpers.EnvOr("GPROXY_CONFIG", "gproxy.yaml"), "config file path (env: GPROXY_CONFIG)")
+	pflag.Parse()
+	viper.SetConfigFile(configFile)
+	viper.SetEnvPrefix("GRAPHIKCTL")
+	viper.AutomaticEnv()
 
-	pflag.CommandLine.StringToStringVar(&grpcRouter, "grpc-routes", helpers.StringStringEnvOr("GPROXY_GRPC_ROUTES", nil), "hostname -> gRPC endpoint/url transformations")
-	pflag.CommandLine.StringToStringVar(&httpRouter, "http-routes", helpers.StringStringEnvOr("GPROXY_HTTP_ROUTES", nil), "hostname -> http endpoint/url transformations")
-	pflag.CommandLine.StringSliceVar(&adomains, "allow-domains", helpers.StringSliceEnvOr("GPROXY_ALLOW_DOMAINS", nil), "allowed domains for lets encrypt autocert (required) (env: GPROXY_ALLOW_DOMAINS)")
-	pflag.CommandLine.StringSliceVar(&cheaders, "allow-headers", helpers.StringSliceEnvOr("GPROXY_ALLOW_HEADERS", []string{"*"}), "cors allow headers (env: GPROXY_ALLOW_HEADERS)")
-	pflag.CommandLine.StringSliceVar(&corigins, "allow-origins", helpers.StringSliceEnvOr("GPROXY_ALLOW_ORIGINS", []string{"*"}), "cors allow origins (env: GPROXY_ALLOW_ORIGINS)")
-	pflag.CommandLine.StringSliceVar(&cmethods, "allow-methods", helpers.StringSliceEnvOr("GPROXY_ALLOW_METHODS", []string{"HEAD", "GET", "POST", "PUT", "PATCH", "DELETE"}), "cors allow methods (env: GPROXY_ALLOW_METHODS)")
+	viper.SetDefault("server.insecure_port", 80)
+	viper.SetDefault("server.secure_port", 443)
+
+	if err := viper.ReadInConfig(); err != nil {
+		fmt.Println(err.Error())
+		return
+	}
 }
 
 var (
-	insecurePort int
-	securePort   int
-	adomains     []string
-	corigins     []string
-	cheaders     []string
-	cmethods     []string
-	debug        bool
-	grpcRouter   = map[string]string{}
-	httpRouter   = map[string]string{}
+	configFile string
 )
 
 func main() {
-	pflag.Parse()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	var (
+		insecurePort = viper.GetInt("server.insecure_port")
+		securePort   = viper.GetInt("server.secure_port")
+		adomains     = viper.GetStringSlice("autocert")
+		corigins     = viper.GetStringSlice("cors.origins")
+		cheaders     = viper.GetStringSlice("cors.headers")
+		cmethods     = viper.GetStringSlice("cors.methods")
+		debug        = viper.GetBool("debug")
+		grpcRouter   = viper.GetStringSlice("routing.grpc")
+		httpRouter   = viper.GetStringSlice("routing.http")
+	)
+
 	lgger := logger.New(debug)
 	if len(adomains) == 0 {
-		lgger.Error("empty --allow-domains")
+		lgger.Error("config: empty autocert",
+			zap.Any("config", viper.AllSettings()),
+		)
+		return
+	}
+	if len(grpcRouter) == 0 && len(httpRouter) == 0 {
+		lgger.Error("config: at least one routing.grpc or routing.http entry expected",
+			zap.Any("config", viper.AllSettings()),
+		)
 		return
 	}
 	c := cors.New(cors.Options{
@@ -72,19 +89,58 @@ func main() {
 				return
 			}
 		}
+		var triggers []*trigger.Trigger
+
+		for _, exp := range grpcRouter {
+			if exp != "" {
+				trig, err := trigger.NewArrowTrigger(exp)
+				if err != nil {
+					lgger.Error("failed to parse gRPC route trigger", zap.String("trigger", exp), zap.Error(err))
+					return
+				}
+				triggers = append(triggers, trig)
+			}
+		}
+
 		opts = append(opts, gproxy.WithGRPCRoutes(func(ctx context.Context, host string) string {
-			return grpcRouter[host]
+			for _, trig := range triggers {
+				data, err := trig.Trigger(map[string]interface{}{
+					"host": host,
+				})
+				if err == nil {
+					if target, ok := data["target"].(string); ok {
+						return target
+					}
+				}
+			}
+			return ""
 		}))
 	}
 	if len(httpRouter) > 0 {
-		for _, v := range httpRouter {
-			if _, err := url.Parse(v); err != nil {
-				lgger.Error("failed to parse http route", zap.String("route", v), zap.Error(err))
-				return
+		var triggers []*trigger.Trigger
+
+		for _, exp := range httpRouter {
+			if exp != "" {
+				trig, err := trigger.NewArrowTrigger(exp)
+				if err != nil {
+					lgger.Error("failed to parse http route trigger", zap.String("trigger", exp), zap.Error(err))
+					return
+				}
+				triggers = append(triggers, trig)
 			}
 		}
 		opts = append(opts, gproxy.WithHTTPRoutes(func(ctx context.Context, host string) string {
-			return httpRouter[host]
+			for _, trig := range triggers {
+				data, err := trig.Trigger(map[string]interface{}{
+					"host": host,
+				})
+				if err == nil {
+					if target, ok := data["target"].(string); ok {
+						return target
+					}
+				}
+			}
+			return ""
 		}))
 	}
 
