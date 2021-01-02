@@ -36,7 +36,7 @@ a library for creating lets-encrypt secured gRPC and http reverse proxies
 
 # GProxy Service
 
-    docker pull graphikDB:gproxy:v0.0.2
+    docker pull graphikDB:gproxy:v0.0.3
     
 default config path: gproxy.yaml
 

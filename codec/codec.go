@@ -1,12 +1,13 @@
 package codec
 
 import (
+	"github.com/mwitkow/grpc-proxy/proxy"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/encoding"
 )
 
-func NewGrpcCodec() encoding.Codec {
-	return &proxyCodec{}
+func NewProxyCodec() encoding.Codec {
+	return &proxyCodec{codec: proxy.Codec()}
 }
 
 type proxyCodec struct {
@@ -14,7 +15,7 @@ type proxyCodec struct {
 }
 
 func (p *proxyCodec) Name() string {
-	return "proxy"
+	return "proto"
 }
 
 func (p *proxyCodec) Marshal(v interface{}) ([]byte, error) {

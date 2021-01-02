@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
-	"net/url"
 )
 
 func init() {
@@ -83,12 +82,6 @@ func main() {
 		return errors.New("forbidden domain")
 	}))
 	if len(grpcRouter) > 0 {
-		for _, v := range grpcRouter {
-			if _, err := url.Parse(v); err != nil {
-				lgger.Error("failed to parse gRPC route", zap.String("route", v), zap.Error(err))
-				return
-			}
-		}
 		var triggers []*trigger.Trigger
 
 		for _, exp := range grpcRouter {
@@ -102,18 +95,18 @@ func main() {
 			}
 		}
 
-		opts = append(opts, gproxy.WithGRPCRoutes(func(ctx context.Context, host string) string {
+		opts = append(opts, gproxy.WithGRPCRoutes(func(ctx context.Context, host string) (string, error) {
 			for _, trig := range triggers {
 				data, err := trig.Trigger(map[string]interface{}{
 					"host": host,
 				})
 				if err == nil {
 					if target, ok := data["target"].(string); ok {
-						return target
+						return target, nil
 					}
 				}
 			}
-			return ""
+			return "", errors.New("failed to find routing target")
 		}))
 	}
 	if len(httpRouter) > 0 {
@@ -129,18 +122,18 @@ func main() {
 				triggers = append(triggers, trig)
 			}
 		}
-		opts = append(opts, gproxy.WithHTTPRoutes(func(ctx context.Context, host string) string {
+		opts = append(opts, gproxy.WithHTTPRoutes(func(ctx context.Context, host string) (string, error) {
 			for _, trig := range triggers {
 				data, err := trig.Trigger(map[string]interface{}{
 					"host": host,
 				})
 				if err == nil {
 					if target, ok := data["target"].(string); ok {
-						return target
+						return target, nil
 					}
 				}
 			}
-			return ""
+			return "", errors.New("failed to find routing target")
 		}))
 	}
 

@@ -30,11 +30,11 @@ import (
 )
 
 func init() {
-	encoding.RegisterCodec(codec.NewGrpcCodec())
+	encoding.RegisterCodec(codec.NewProxyCodec())
 }
 
 // RouterFunc takes a hostname and returns an endpoint to route to
-type RouterFunc func(ctx context.Context, host string) string
+type RouterFunc func(ctx context.Context, host string) (string, error)
 
 // Middleware is an http middleware
 type Middleware func(handler http.Handler) http.Handler
@@ -121,7 +121,6 @@ func (p *Proxy) Serve(ctx context.Context) error {
 	} else {
 		handler = m.HTTPHandler(nil)
 	}
-	//handler = p.panicRecover()(handler)
 	if len(p.middlewares) > 0 {
 		for _, h := range p.middlewares {
 			handler = h(handler)
@@ -250,11 +249,15 @@ func (p *Proxy) Serve(ctx context.Context) error {
 
 func (p *Proxy) gRPCDirector() proxy.StreamDirector {
 	return func(ctx context.Context, fullMethodName string) (context.Context, *grpc.ClientConn, error) {
+		ctx = invertContext(ctx)
 		md, ok := metadata.FromIncomingContext(ctx)
 		if ok {
 			if val, exists := md[":authority"]; exists && val[0] != "" {
 				now := time.Now()
-				target := p.gRPCRouter(ctx, val[0])
+				target, err := p.gRPCRouter(ctx, val[0])
+				if err != nil {
+					return nil, nil, status.Error(codes.InvalidArgument, err.Error())
+				}
 				fields := []zap.Field{
 					zap.String("proxy", "gRPC"),
 					zap.Any("metadata", md),
@@ -269,32 +272,39 @@ func (p *Proxy) gRPCDirector() proxy.StreamDirector {
 				if target == "" {
 					return nil, nil, status.Error(codes.PermissionDenied, "unknown route")
 				}
+
 				// Make sure we use DialContext so the dialing can be cancelled/time out together with the context.
-				conn, err := grpc.DialContext(ctx, target, grpc.WithInsecure())
+				conn, err := grpc.DialContext(invertContext(ctx), target, grpc.WithInsecure())
+				if err != nil {
+					return nil, nil, err
+				}
 				return ctx, conn, err
 			}
 		}
-		return nil, nil, grpc.Errorf(codes.Unimplemented, "Unknown method")
+		return nil, nil, status.Error(codes.Unimplemented, "Unknown method")
 	}
 }
 
 func (p *Proxy) httpDirector() func(r *http.Request) {
 	return func(req *http.Request) {
 		now := time.Now()
-		target := p.httpRouter(req.Context(), req.Host)
 		fields := []zap.Field{
 			zap.String("proxy", "http"),
 			zap.String("host", req.Host),
 			zap.String("method", req.Method),
 			zap.Any("headers", req.Header),
-			zap.String("target", target),
 		}
 		defer func() {
 			dur := time.Since(now)
 			fields = append(fields, zap.Duration("duration", dur))
 			p.logger.Debug("proxied request", fields...)
 		}()
-
+		target, err := p.httpRouter(req.Context(), req.Host)
+		if err != nil {
+			p.logger.Error("failed to find routing target", zap.Error(err))
+			return
+		}
+		fields = append(fields, zap.String("target", target))
 		if target == "" {
 			p.logger.Debug("empty routing target", fields...)
 			return
@@ -364,15 +374,11 @@ func singleJoiningSlash(a, b string) string {
 //	return ""
 //}
 
-func (p *Proxy) panicRecover() Middleware {
-	return func(handler http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			defer func() {
-				if err := recover(); err != nil {
-					w.WriteHeader(http.StatusInternalServerError)
-					p.logger.Error("panic recover", zap.Error(err.(error)))
-				}
-			}()
-		})
+func invertContext(ctx context.Context) context.Context {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if ok {
+		return metadata.NewOutgoingContext(ctx, md)
 	}
+
+	return ctx
 }

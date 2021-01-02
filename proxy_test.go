@@ -2,11 +2,13 @@ package gproxy_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/graphikDB/gproxy"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -21,8 +23,11 @@ func ExampleNew() {
 
 	proxy, err := gproxy.New(ctx,
 		gproxy.WithInsecurePort(8080),
-		gproxy.WithHTTPRoutes(func(ctx context.Context, host string) string {
-			return srv.URL
+		gproxy.WithHTTPRoutes(func(ctx context.Context, host string) (string, error) {
+			if strings.Contains(host, "localhost") {
+				return srv.URL, nil
+			}
+			return "", errors.New(fmt.Sprintf("%s not allowed", host))
 		}),
 		gproxy.WithHostPolicy(func(ctx context.Context, host string) error {
 			return nil
@@ -46,8 +51,11 @@ func Test(t *testing.T) {
 	}))
 	proxy, err := gproxy.New(ctx,
 		gproxy.WithInsecurePort(8080),
-		gproxy.WithHTTPRoutes(func(ctx context.Context, host string) string {
-			return srv.URL
+		gproxy.WithHTTPRoutes(func(ctx context.Context, host string) (string, error) {
+			if strings.Contains(host, "localhost") {
+				return srv.URL, nil
+			}
+			return "", errors.New(fmt.Sprintf("%s not allowed", host))
 		}),
 		gproxy.WithHostPolicy(func(ctx context.Context, host string) error {
 			return nil
