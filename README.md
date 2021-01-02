@@ -1,11 +1,13 @@
-# gproxy
+![graphik](assets/graphik-logo.jpg)
 
-a library for creating lets-encrypt secured gRPC and http reverse proxies 
+gproxy is a reverse proxy service AND library for creating lets-encrypt secured gRPC and http reverse proxies
 
 [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?status.svg)](https://godoc.org/github.com/graphikDB/gproxy)
 
     
     go get -u github.com/graphikDB/gproxy
+    
+    docker pull graphikDB:gproxy:v0.0.6
     
     
 ```go
@@ -34,8 +36,6 @@ a library for creating lets-encrypt secured gRPC and http reverse proxies
 ```
 
 # GProxy as a Service
-
-    docker pull graphikDB:gproxy:v0.0.6
     
 default config path: ./gproxy.yaml which may be changed with the --config flag or the GRAPHIK_CONFIG environmental variable
 
