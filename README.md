@@ -43,15 +43,21 @@ default config path: gproxy.yaml
 ## Example Config
 
 ```yaml
+# enable debug logs
 debug: true
+# lets encrypt autocert allowed domains
 autocert:
   - "www.example.com"
 routing:
+  # http reverse proxy routes using trigger framework: github.com/graphikDB/trigger
   http:
     - "this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
 server:
+  # unencrypted server port
   insecure_port: 8080
+  # encrypted server port
   secure_port: 443
+# cross origin resource sharing config
 cors:
   origins: "*"
   methods: "*"
