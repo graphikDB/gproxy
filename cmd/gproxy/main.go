@@ -28,7 +28,9 @@ func init() {
 	viper.SetDefault("server.secure_port", 443)
 
 	if err := viper.ReadInConfig(); err != nil {
-		fmt.Println(err.Error())
+		if viper.GetBool("debug") {
+			fmt.Printf("failed to read in config: %s", err.Error())
+		}
 		return
 	}
 }

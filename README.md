@@ -36,7 +36,7 @@ a library for creating lets-encrypt secured gRPC and http reverse proxies
 
 # GProxy Service
 
-    docker pull graphikDB:gproxy:v0.0.5
+    docker pull graphikDB:gproxy:v0.0.6
     
 default config path: gproxy.yaml
 
@@ -128,7 +128,7 @@ spec:
     spec:
       containers:
         - name: gproxy
-          image: graphikdb/gproxy:v0.0.5
+          image: graphikdb/gproxy:v0.0.6
           ports:
             - containerPort: 80
             - containerPort: 443

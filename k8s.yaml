@@ -39,7 +39,7 @@ metadata:
   labels:
     app: gproxy
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: gproxy
@@ -51,23 +51,23 @@ spec:
     spec:
       containers:
         - name: gproxy
-          image: graphikdb/gproxy:v0.0.5
+          image: graphikdb/gproxy:v0.0.6
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
             - containerPort: 443
           env:
             - name: GPROXY_CONFIG
-              value: /tmp/gproxy/graphik.yaml
+              value: /tmp/gproxy/gproxy.yaml
           volumeMounts:
-            - mountPath: /tmp/gproxy
-              name: config-volume
             - mountPath: /tmp/certs
               name: certs-volume
+            - mountPath: /tmp/gproxy/gproxy.yaml
+              name: config-volume
+              subPath: gproxy.yaml
       volumes:
         - name: config-volume
           configMap:
-            # Provide the name of the ConfigMap containing the files you want
-            # to add to the container
             name: gproxy-config
   volumeClaimTemplates:
     - metadata:
