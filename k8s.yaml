@@ -6,33 +6,36 @@ metadata:
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: gproxy
+  name: gproxy-config
+  namespace: gproxy
 data:
-  debug: true
-  autocert:
-    - "www.example.com"
-  routing:
-    http:
-      - "this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
-    grpc:
-      - "this.host == 'localhost:8080' => { 'target': 'localhost:7820' }"
-  server:
-    insecure_port: 8080
-    secure_port: 443
-  cors:
-    origins: "*"
-    methods: "*"
-    headers:
-      - "GET"
-      - "POST"
-      - "PUT"
-      - "DELETE"
-      - "PATCH"
+  gproxy.yaml: |-
+    debug: true
+    autocert:
+      - "www.example.com"
+    routing:
+      http:
+        - "this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
+      grpc:
+        - "this.host == 'localhost:8080' => { 'target': 'localhost:7820' }"
+    server:
+      insecure_port: 8080
+      secure_port: 443
+    cors:
+      origins: "*"
+      methods: "*"
+      headers:
+        - "GET"
+        - "POST"
+        - "PUT"
+        - "DELETE"
+        - "PATCH"
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: gproxy
+  namespace: gproxy
   labels:
     app: gproxy
 spec:
@@ -40,6 +43,7 @@ spec:
   selector:
     matchLabels:
       app: gproxy
+  serviceName: "gproxy"
   template:
     metadata:
       labels:
@@ -47,34 +51,48 @@ spec:
     spec:
       containers:
         - name: gproxy
-          image: gproxy:v0.0.3
+          image: graphikdb/gproxy:v0.0.5
           ports:
             - containerPort: 80
             - containerPort: 443
+          env:
+            - name: GPROXY_CONFIG
+              value: /tmp/gproxy/graphik.yaml
           volumeMounts:
             - mountPath: /tmp/gproxy
               name: config-volume
+            - mountPath: /tmp/certs
+              name: certs-volume
       volumes:
         - name: config-volume
           configMap:
             # Provide the name of the ConfigMap containing the files you want
             # to add to the container
-            name: gproxy
+            name: gproxy-config
+  volumeClaimTemplates:
+    - metadata:
+        name: certs-volume
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 5Mi
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: gproxy
   namespace: gproxy
-  labels:
-    app: gproxy
 spec:
-  ports:
-  - port: 443
-    name: secure
-  - port: 80
-    name: insecure
-  clusterIP: None
   selector:
     app: gproxy
+  ports:
+    - protocol: TCP
+      port: 80
+      name: insecure
+    - protocol: TCP
+      port: 443
+      name: secure
+  type: LoadBalancer
 ---

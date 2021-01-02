@@ -36,11 +36,11 @@ a library for creating lets-encrypt secured gRPC and http reverse proxies
 
 # GProxy Service
 
-    docker pull graphikDB:gproxy:v0.0.3
+    docker pull graphikDB:gproxy:v0.0.5
     
 default config path: gproxy.yaml
 
-## Example Config
+## Local Config(example)
 
 ```yaml
 # enable debug logs
@@ -69,4 +69,110 @@ cors:
     - "PUT"
     - "DELETE"
     - "PATCH"
+```
+
+## Kubernetes Config (example)
+
+```yaml
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gproxy
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: gproxy-config
+  namespace: gproxy
+data:
+  gproxy.yaml: |-
+    debug: true
+    autocert:
+      - "www.example.com"
+    routing:
+      http:
+        - "this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
+      grpc:
+        - "this.host == 'localhost:8080' => { 'target': 'localhost:7820' }"
+    server:
+      insecure_port: 8080
+      secure_port: 443
+    cors:
+      origins: "*"
+      methods: "*"
+      headers:
+        - "GET"
+        - "POST"
+        - "PUT"
+        - "DELETE"
+        - "PATCH"
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: gproxy
+  namespace: gproxy
+  labels:
+    app: gproxy
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: gproxy
+  serviceName: "gproxy"
+  template:
+    metadata:
+      labels:
+        app: gproxy
+    spec:
+      containers:
+        - name: gproxy
+          image: graphikdb/gproxy:v0.0.5
+          ports:
+            - containerPort: 80
+            - containerPort: 443
+          env:
+            - name: GPROXY_CONFIG
+              value: /tmp/gproxy/graphik.yaml
+          volumeMounts:
+            - mountPath: /tmp/gproxy/gproxy.yaml
+              name: config-volume
+
+            - mountPath: /tmp/certs
+              name: certs-volume
+      volumes:
+        - name: config-volume
+          configMap:
+            # Provide the name of the ConfigMap containing the files you want
+            # to add to the container
+            name: gproxy-config
+  volumeClaimTemplates:
+    - metadata:
+        name: certs-volume
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 5Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gproxy
+  namespace: gproxy
+spec:
+  selector:
+    app: gproxy
+  ports:
+    - protocol: TCP
+      port: 80
+      name: insecure
+    - protocol: TCP
+      port: 443
+      name: secure
+  type: LoadBalancer
+---
+
 ```

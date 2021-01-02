@@ -74,3 +74,10 @@ func WithStreamInterceptors(sinterceptors ...grpc.StreamServerInterceptor) Opt {
 		p.sinterceptors = append(p.sinterceptors, sinterceptors...)
 	}
 }
+
+// WithCertCacheDir sets the directory in which certificates will be cached (default: /tmp/certs)
+func WithCertCacheDir(certCache string) Opt {
+	return func(p *Proxy) {
+		p.certCache = certCache
+	}
+}
