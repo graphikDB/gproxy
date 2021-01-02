@@ -8,7 +8,6 @@ a library for creating lets-encrypt secured gRPC and http reverse proxies
     go get -u github.com/graphikDB/gproxy
     
     
-    
 ```go
         proxy, err := gproxy.New(ctx,
 		gproxy.WithInsecurePort(8080),
@@ -34,13 +33,13 @@ a library for creating lets-encrypt secured gRPC and http reverse proxies
 	}
 ```
 
-# GProxy Service
+# GProxy as a Service
 
     docker pull graphikDB:gproxy:v0.0.6
     
-default config path: gproxy.yaml
+default config path: ./gproxy.yaml which may be changed with the --config flag or the GRAPHIK_CONFIG environmental variable
 
-## Local Config(example)
+Example Config:
 
 ```yaml
 # enable debug logs
@@ -71,10 +70,12 @@ cors:
     - "PATCH"
 ```
 
-## Kubernetes Config (example)
+## Deployment
 
+### Kubernetes
+
+example manifest:
 ```yaml
-
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -116,7 +117,7 @@ metadata:
   labels:
     app: gproxy
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: gproxy
@@ -129,23 +130,22 @@ spec:
       containers:
         - name: gproxy
           image: graphikdb/gproxy:v0.0.6
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
             - containerPort: 443
           env:
             - name: GPROXY_CONFIG
-              value: /tmp/gproxy/graphik.yaml
+              value: /tmp/gproxy/gproxy.yaml
           volumeMounts:
-            - mountPath: /tmp/gproxy/gproxy.yaml
-              name: config-volume
-
             - mountPath: /tmp/certs
               name: certs-volume
+            - mountPath: /tmp/gproxy/gproxy.yaml
+              name: config-volume
+              subPath: gproxy.yaml
       volumes:
         - name: config-volume
           configMap:
-            # Provide the name of the ConfigMap containing the files you want
-            # to add to the container
             name: gproxy-config
   volumeClaimTemplates:
     - metadata:
@@ -176,3 +176,5 @@ spec:
 ---
 
 ```
+
+apply with `kubectl apply -f k8s.yaml`
