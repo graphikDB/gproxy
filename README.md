@@ -52,6 +52,8 @@ routing:
   # http reverse proxy routes using trigger framework: github.com/graphikDB/trigger
   http:
     - "this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
+  grpc:
+    - "this.host == 'localhost:8080' => { 'target': 'localhost:7820' }"
 server:
   # unencrypted server port
   insecure_port: 8080
