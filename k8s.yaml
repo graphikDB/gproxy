@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gproxy
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: gproxy
+data:
+  debug: true
+  autocert:
+    - "www.example.com"
+  routing:
+    http:
+      - "this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
+    grpc:
+      - "this.host == 'localhost:8080' => { 'target': 'localhost:7820' }"
+  server:
+    insecure_port: 8080
+    secure_port: 443
+  cors:
+    origins: "*"
+    methods: "*"
+    headers:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+      - "PATCH"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gproxy
+  labels:
+    app: gproxy
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: gproxy
+  template:
+    metadata:
+      labels:
+        app: gproxy
+    spec:
+      containers:
+        - name: gproxy
+          image: gproxy:v0.0.3
+          ports:
+            - containerPort: 80
+            - containerPort: 443
+          volumeMounts:
+            - mountPath: /tmp/gproxy
+              name: config-volume
+      volumes:
+        - name: config-volume
+          configMap:
+            # Provide the name of the ConfigMap containing the files you want
+            # to add to the container
+            name: gproxy
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gproxy
+  namespace: gproxy
+  labels:
+    app: gproxy
+spec:
+  ports:
+  - port: 443
+    name: secure
+  - port: 80
+    name: insecure
+  clusterIP: None
+  selector:
+    app: gproxy
+---

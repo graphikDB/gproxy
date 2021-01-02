@@ -12,13 +12,16 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
+	"strings"
 )
 
 func init() {
 	pflag.CommandLine.StringVar(&configFile, "config", helpers.EnvOr("GPROXY_CONFIG", "gproxy.yaml"), "config file path (env: GPROXY_CONFIG)")
 	pflag.Parse()
 	viper.SetConfigFile(configFile)
-	viper.SetEnvPrefix("GRAPHIKCTL")
+	viper.SetEnvPrefix("GPROXY")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
 	viper.AutomaticEnv()
 
 	viper.SetDefault("server.insecure_port", 80)
