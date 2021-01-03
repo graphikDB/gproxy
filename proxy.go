@@ -87,6 +87,7 @@ func New(ctx context.Context, opts ...Opt) (*Proxy, error) {
 	if p.certCache == "" {
 		p.certCache = "/tmp/certs"
 	}
+	p.mu = sync.RWMutex{}
 	os.MkdirAll(p.certCache, 0700)
 	return p, nil
 }

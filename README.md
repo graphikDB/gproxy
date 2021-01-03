@@ -1,16 +1,20 @@
 ![graphik](assets/graphik-logo.jpg)
 
-gproxy is a reverse proxy service AND library for creating flexible, expression-based, lets-encrypt secured gRPC and http reverse proxies
+gproxy is a reverse proxy service AND library for creating flexible, expression-based, lets-encrypt secured gRPC and http reverse proxies    
+  
+## GProxy as a Library
 
 Library Documentation: [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?status.svg)](https://godoc.org/github.com/graphikDB/gproxy)
 
-[trigger/expression language reference]("https://github.com/graphikdb/trigger")
 
     go get -u github.com/graphikDB/gproxy
-    
-    docker pull graphikDB:gproxy:v0.0.12
-    
-    
+
+
+- [x] Automatic Lets Encrypt Based SSL Encryption
+- [x] Transparent gRPC Proxy(including streaming)
+- [x] Transparent http Proxy(including websockets)
+- [x] [Expression-Based](github.com/graphikDB/trigger) Routing
+
 ```go
         proxy, err := gproxy.New(ctx,
 		// serve unencrypted http/gRPC traffic on port 8080
@@ -36,29 +40,20 @@ Library Documentation: [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?s
 	}
 ```
 
-## Library Features
+# GProxy as a Service
 
-- [x] Automatic Lets Encrypt Based SSL Encryption
-- [x] Transparent gRPC Proxy(including streaming)
-- [x] Transparent http Proxy(including websockets)
-- [x] Expression-Based Routing
-
-
-## Service Features
+    docker pull graphikDB:gproxy:v0.0.13
 
 - [x] Automatic Lets Encrypt Based SSL Encryption
 - [x] Transparent gRPC Proxy(including streaming)
 - [x] Transparent http Proxy(including websockets)
 - [x] CORS
-- [x] Expression-Based Routing
+- [x] [Expression-Based](github.com/graphikDB/trigger) Routing
 - [x] 12-Factor Config
 - [ ] Hot Reload Config
-- [x] Dockerized(graphikDB:gproxy:v0.0.12)
+- [x] Dockerized(graphikDB:gproxy:v0.0.13)
 - [x] K8s Deployment Manifest
 - [ ] Docker-Compose File
-
-
-# GProxy as a Service
     
 default config path: ./gproxy.yaml which may be changed with the --config flag or the GRAPHIK_CONFIG environmental variable
 
@@ -142,7 +137,7 @@ spec:
     spec:
       containers:
         - name: gproxy
-          image: graphikdb/gproxy:v0.0.12
+          image: graphikdb/gproxy:v0.0.13
           imagePullPolicy: Always
           ports:
             - containerPort: 80

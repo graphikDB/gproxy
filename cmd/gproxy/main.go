@@ -53,15 +53,10 @@ func main() {
 
 	lgger := logger.New(debug)
 	if len(adomains) == 0 {
-		lgger.Error("config: empty autocert",
-			zap.Any("config", viper.AllSettings()),
-		)
-		return
+		lgger.Error("config: empty autocert", zap.Any("config", viper.AllSettings()))
 	}
 	if len(routing) == 0 {
-		lgger.Error("config: at least one routing trigger/expression entry expected",
-			zap.Any("config", viper.AllSettings()),
-		)
+		lgger.Error("config: at least one routing trigger/expression entry expected", zap.Any("config", viper.AllSettings()))
 		return
 	}
 	c := cors.New(cors.Options{
