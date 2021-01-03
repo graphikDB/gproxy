@@ -52,7 +52,7 @@ spec:
     spec:
       containers:
         - name: gproxy
-          image: graphikdb/gproxy:v1.0.0
+          image: graphikdb/gproxy:v1.0.1
           imagePullPolicy: Always
           ports:
             - containerPort: 80

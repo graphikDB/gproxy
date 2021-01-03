@@ -85,7 +85,7 @@ func main() {
 	if viper.GetBool("watch") {
 		viper.OnConfigChange(func(in fsnotify.Event) {
 			lgger.Debug("config change", zap.String("file", in.Name))
-			if err := proxy.OverrideTriggers(viper.GetStringSlice("routing")); err != nil {
+			if err := proxy.OverrideRoutes(viper.GetStringSlice("routing")); err != nil {
 				lgger.Error("config change failure", zap.Error(err))
 			}
 		})

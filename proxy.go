@@ -262,8 +262,8 @@ func (p *Proxy) Serve(ctx context.Context) error {
 	return nil
 }
 
-// OverrideTriggers overrides the triggers-routes on the Proxy. It is concurrency safe
-func (p *Proxy) OverrideTriggers(expressions []string) error {
+// OverrideRoutes overrides the routes on the Proxy. It is concurrency safe
+func (p *Proxy) OverrideRoutes(expressions []string) error {
 	var triggers []*trigger.Trigger
 	for _, exp := range expressions {
 		t, err := trigger.NewArrowTrigger(exp)

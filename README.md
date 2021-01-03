@@ -47,7 +47,7 @@ Library Documentation: [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?s
 
 docker:
 
-    docker pull graphikDB:gproxy:v1.0.0
+    docker pull graphikDB:gproxy:v1.0.1
     
 homebrew(Mac):
 
@@ -64,7 +64,7 @@ homebrew(Mac):
 - [x] [Expression-Based](github.com/graphikDB/trigger) Routing
 - [x] 12-Factor Config
 - [x] Hot Reload Config
-- [x] Dockerized(graphikDB:gproxy:v1.0.0)
+- [x] Dockerized(graphikDB:gproxy:v1.0.1)
 - [x] K8s Deployment Manifest
     
 default config path: ./gproxy.yaml which may be changed with the --config flag or the GRAPHIK_CONFIG environmental variable
@@ -155,7 +155,7 @@ spec:
     spec:
       containers:
         - name: gproxy
-          image: graphikdb/gproxy:v1.0.0
+          image: graphikdb/gproxy:v1.0.1
           imagePullPolicy: Always
           ports:
             - containerPort: 80
