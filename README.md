@@ -1,6 +1,6 @@
 ![graphik](assets/graphik-logo.jpg)
 
-gproxy is a reverse proxy service AND library for creating flexible, expression-based, lets-encrypt secured gRPC and http reverse proxies    
+gproxy is a reverse proxy service AND library for creating flexible, [expression-based]((github.com/graphikDB/trigger)), [lets-encrypt/acme]((https://letsencrypt.org/)) secured gRPC/http reverse proxies    
   
 ## GProxy as a Library
 
@@ -10,7 +10,7 @@ Library Documentation: [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?s
     go get -u github.com/graphikDB/gproxy
 
 
-- [x] Automatic Lets Encrypt Based SSL Encryption
+- [x] Automatic [LetsEncrypt/Acme](https://letsencrypt.org/) Based SSL Encryption
 - [x] Transparent gRPC Proxy(including streaming)
 - [x] Transparent http Proxy(including websockets)
 - [x] [Expression-Based](github.com/graphikDB/trigger) Routing
@@ -42,18 +42,17 @@ Library Documentation: [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?s
 
 # GProxy as a Service
 
-    docker pull graphikDB:gproxy:v0.0.13
+    docker pull graphikDB:gproxy:v0.0.14
 
-- [x] Automatic Lets Encrypt Based SSL Encryption
+- [x] Automatic [LetsEncrypt/Acme](https://letsencrypt.org/) Based SSL Encryption
 - [x] Transparent gRPC Proxy(including streaming)
 - [x] Transparent http Proxy(including websockets)
 - [x] CORS
 - [x] [Expression-Based](github.com/graphikDB/trigger) Routing
 - [x] 12-Factor Config
-- [ ] Hot Reload Config
-- [x] Dockerized(graphikDB:gproxy:v0.0.13)
+- [x] Hot Reload Config
+- [x] Dockerized(graphikDB:gproxy:v0.0.14)
 - [x] K8s Deployment Manifest
-- [ ] Docker-Compose File
     
 default config path: ./gproxy.yaml which may be changed with the --config flag or the GRAPHIK_CONFIG environmental variable
 
@@ -78,6 +77,7 @@ cors:
     - "PUT"
     - "DELETE"
     - "PATCH"
+watch: true # hot reload config changes
 ```
 
 ## Deployment
@@ -102,10 +102,10 @@ data:
     autocert:
       - "www.example.com"
     routing:
-      - "this.http && this.host == 'localhost:8080' => 'http://localhost:7821'"
-      - "this.grpc && this.host == 'localhost:8080' => 'localhost:7820'"
+      - "this.http && this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
+      - "this.grpc && this.host == 'localhost:8080' => { 'target': 'localhost:7820' }"
     server:
-      insecure_port: 8080
+      insecure_port: 80
       secure_port: 443
     cors:
       origins: "*"
@@ -116,6 +116,7 @@ data:
         - "PUT"
         - "DELETE"
         - "PATCH"
+    watch: true # hot reload config changes
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -137,7 +138,7 @@ spec:
     spec:
       containers:
         - name: gproxy
-          image: graphikdb/gproxy:v0.0.13
+          image: graphikdb/gproxy:v0.0.14
           imagePullPolicy: Always
           ports:
             - containerPort: 80
@@ -185,8 +186,16 @@ spec:
 
 ```
 
-apply with `kubectl apply -f k8s.yaml`
+save to k8s.yaml & apply with 
 
-### Docker-Compose
+    kubectl apply -f k8s.yaml
+    
+    
+watch as pods come up:
 
-**Coming Soon**
+    kubectl get pods -n gproxy -w
+    
+
+check LoadBalancer ip:
+
+    kubectl get svc -n gproxy

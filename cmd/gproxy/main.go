@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/fsnotify/fsnotify"
 	"github.com/graphikDB/gproxy"
 	"github.com/graphikDB/gproxy/helpers"
 	"github.com/graphikDB/gproxy/logger"
@@ -31,6 +32,7 @@ func init() {
 		}
 		return
 	}
+	viper.WatchConfig()
 }
 
 var (
@@ -78,6 +80,14 @@ func main() {
 	if err != nil {
 		lgger.Error("failed to create proxy", zap.Error(err))
 		return
+	}
+	if viper.GetBool("watch") {
+		viper.OnConfigChange(func(in fsnotify.Event) {
+			lgger.Debug("config change", zap.String("file", in.Name))
+			if err := proxy.OverrideTriggers(viper.GetStringSlice("routing")); err != nil {
+				lgger.Error("config change failure", zap.Error(err))
+			}
+		})
 	}
 	if err := proxy.Serve(ctx); err != nil {
 		lgger.Error("server failure", zap.Error(err))

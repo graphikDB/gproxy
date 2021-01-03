@@ -14,9 +14,8 @@ data:
     autocert:
       - "www.example.com"
     routing:
-      http:
-        - "this.http && this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
-        - "this.grpc && this.host == 'localhost:8080' => { 'target': 'localhost:7820' }"
+      - "this.http && this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
+      - "this.grpc && this.host == 'localhost:8080' => { 'target': 'localhost:7820' }"
     server:
       insecure_port: 80
       secure_port: 443
@@ -29,6 +28,7 @@ data:
         - "PUT"
         - "DELETE"
         - "PATCH"
+    watch: true
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -50,7 +50,7 @@ spec:
     spec:
       containers:
         - name: gproxy
-          image: graphikdb/gproxy:v0.0.13
+          image: graphikdb/gproxy:v0.0.14
           imagePullPolicy: Always
           ports:
             - containerPort: 80
