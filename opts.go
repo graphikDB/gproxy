@@ -36,14 +36,6 @@ func WithLogger(logger *logger.Logger) Opt {
 	}
 }
 
-// WithMiddlewares sets the http middlewares on encrypted & non-encrypted traffic(optional)
-func WithMiddlewares(middlewares ...Middleware) Opt {
-	return func(p *Proxy) error {
-		p.middlewares = append(p.middlewares, middlewares...)
-		return nil
-	}
-}
-
 // WithInsecurePort sets the port that non-encrypted traffic will be served on(optional)
 func WithInsecurePort(insecurePort int) Opt {
 	return func(p *Proxy) error {
@@ -117,5 +109,13 @@ func WithGrpcsInit(opts ...func(srv *grpc.Server)) Opt {
 	return func(p *Proxy) error {
 		p.grpcsInit = append(p.grpcInit, opts...)
 		return nil
+	}
+}
+
+func WithMiddlewares(middlewares ...func(handler http.Handler) http.Handler) func(server *http.Server) {
+	return func(server *http.Server) {
+		for _, ware := range middlewares {
+			server.Handler = ware(server.Handler)
+		}
 	}
 }

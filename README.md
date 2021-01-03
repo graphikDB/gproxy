@@ -42,7 +42,7 @@ Library Documentation: [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?s
 
 # GProxy as a Service
 
-    docker pull graphikDB:gproxy:v0.0.14
+    docker pull graphikDB:gproxy:v0.0.15
 
 - [x] Automatic [LetsEncrypt/Acme](https://letsencrypt.org/) Based SSL Encryption
 - [x] Transparent gRPC Proxy(including streaming)
@@ -51,7 +51,7 @@ Library Documentation: [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?s
 - [x] [Expression-Based](github.com/graphikDB/trigger) Routing
 - [x] 12-Factor Config
 - [x] Hot Reload Config
-- [x] Dockerized(graphikDB:gproxy:v0.0.14)
+- [x] Dockerized(graphikDB:gproxy:v0.0.15)
 - [x] K8s Deployment Manifest
     
 default config path: ./gproxy.yaml which may be changed with the --config flag or the GRAPHIK_CONFIG environmental variable
@@ -138,7 +138,7 @@ spec:
     spec:
       containers:
         - name: gproxy
-          image: graphikdb/gproxy:v0.0.14
+          image: graphikdb/gproxy:v0.0.15
           imagePullPolicy: Always
           ports:
             - containerPort: 80

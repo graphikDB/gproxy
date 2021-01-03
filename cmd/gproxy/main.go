@@ -55,10 +55,10 @@ func main() {
 
 	lgger := logger.New(debug)
 	if len(adomains) == 0 {
-		lgger.Error("config: empty autocert", zap.Any("config", viper.AllSettings()))
+		lgger.Debug("config: empty autocert hosts")
 	}
 	if len(routing) == 0 {
-		lgger.Error("config: at least one routing trigger/expression entry expected", zap.Any("config", viper.AllSettings()))
+		lgger.Error("config: at least one routing trigger/expression entry expected")
 		return
 	}
 	c := cors.New(cors.Options{
@@ -68,7 +68,8 @@ func main() {
 	})
 	var opts = []gproxy.Opt{
 		gproxy.WithLogger(lgger),
-		gproxy.WithMiddlewares(c.Handler),
+		gproxy.WithHttpInit(gproxy.WithMiddlewares(c.Handler)),
+		gproxy.WithHttpsInit(gproxy.WithMiddlewares(c.Handler)),
 		gproxy.WithInsecurePort(insecurePort),
 		gproxy.WithSecurePort(securePort),
 	}

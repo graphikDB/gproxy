@@ -34,16 +34,12 @@ func init() {
 	encoding.RegisterCodec(codec.NewProxyCodec())
 }
 
-// Middleware is an http middleware
-type Middleware func(handler http.Handler) http.Handler
-
 // Proxy is a secure(lets encrypt) gRPC & http reverse proxy
 type Proxy struct {
 	mu            sync.RWMutex
 	mach          *machine.Machine
 	logger        *logger.Logger
 	triggers      []*trigger.Trigger
-	middlewares   []Middleware
 	hostPolicy    autocert.HostPolicy
 	certCache     string
 	insecurePort  string
@@ -121,17 +117,12 @@ func (p *Proxy) Serve(ctx context.Context) error {
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(interrupt)
 	var httpHandler http.Handler
-	if !p.redirectHttps {
+	if p.redirectHttps {
+		httpHandler = m.HTTPHandler(nil)
+	} else {
 		httpHandler = m.HTTPHandler(&httputil.ReverseProxy{
 			Director: p.httpDirector(),
 		})
-	} else {
-		httpHandler = m.HTTPHandler(nil)
-	}
-	if len(p.middlewares) > 0 {
-		for _, h := range p.middlewares {
-			httpHandler = h(httpHandler)
-		}
 	}
 	httpServer := &http.Server{
 		Handler: httpHandler,
@@ -150,12 +141,13 @@ func (p *Proxy) Serve(ctx context.Context) error {
 	shutdown = append(shutdown, func(ctx context.Context) {
 		_ = httpServer.Shutdown(ctx)
 	})
-
+	var httpsHandler = m.HTTPHandler(&httputil.ReverseProxy{
+		Director: p.httpDirector(),
+	})
 	tlsHttpServer := &http.Server{
-		Handler: m.HTTPHandler(&httputil.ReverseProxy{
-			Director: p.httpDirector(),
-		}),
+		Handler: httpsHandler,
 	}
+
 	for _, o := range p.httpsInit {
 		o(tlsHttpServer)
 	}
@@ -206,7 +198,7 @@ func (p *Proxy) Serve(ctx context.Context) error {
 		grpc.UnknownServiceHandler(proxy.TransparentHandler(p.gRPCDirector())),
 	}
 	for _, o := range p.grpcsOpts {
-		gsopts = append(gopts, o)
+		gsopts = append(gsopts, o)
 	}
 	tlsGserver := grpc.NewServer(gsopts...)
 	for _, o := range p.grpcsInit {
