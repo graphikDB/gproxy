@@ -1,4 +1,4 @@
-![graphik](assets/graphik-logo.jpg)
+![graphik](https://github.com/graphikDB/assets/blob/master/branding/graphik-logo.jpg?raw=true)
 
 gproxy is a reverse proxy service AND library for creating flexible, [expression-based]((github.com/graphikDB/trigger)), [lets-encrypt/acme]((https://letsencrypt.org/)) secured gRPC/http reverse proxies    
   
