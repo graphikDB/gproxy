@@ -25,9 +25,9 @@ Library Documentation: [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?s
 		// serve encrypted http/gRPC traffic on port 443
 		gproxy.WithSecurePort(443),
 		// if the request is http & the request host contains localhost, proxy to the target http server
-		gproxy.WithRoute(fmt.Sprintf(`this.http && this.host.contains('localhost') => "%s"`, httpServer.URL)),
+		gproxy.WithRoute(fmt.Sprintf(`this.http && this.host.endsWith('graphikdb.io') => "%s"`, httpServer.URL)),
         // if the request is gRPC & the request host contains localhost, proxy to the target gRPC server
-		gproxy.WithRoute(fmt.Sprintf(`this.grpc && this.host.contains('localhost') => "%s"`, grpcServer.URL)),
+		gproxy.WithRoute(fmt.Sprintf(`this.grpc && this.host.endsWith('graphikdb.io') => "%s"`, grpcServer.URL)),
 		// when deploying, set the letsencrypt list of allowed domains
 		gproxy.WithAcmePolicy("this.host.contains('graphikdb.io')"))
 	if err != nil {
@@ -66,8 +66,8 @@ debug: true
 autocert:
   policy: "this.host.contains('graphikdb.io')"
 routing:
-  - "this.http && this.host == 'localhost:8080' => 'http://localhost:7821'"
-  - "this.grpc && this.host == 'localhost:8080' => 'localhost:7820'"
+  - "this.http && this.host.endsWith('graphikdb.io') => 'http://localhost:7821'"
+  - "this.grpc && this.host.endsWith('graphikdb.io') => 'localhost:7820'"
 server:
   insecure_port: 8080
   secure_port: 443
@@ -105,8 +105,8 @@ data:
     autocert:
       policy: "this.host.contains('graphikdb.io')"
     routing:
-      - "this.http && this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
-      - "this.grpc && this.host == 'localhost:8080' => { 'target': 'localhost:7820' }"
+      - "this.http && this.host.endsWith('graphikdb.io') => { 'target': 'http://localhost:7821' }"
+      - "this.grpc && this.host.endsWith('graphikdb.io') => { 'target': 'localhost:7820' }"
     server:
       insecure_port: 80
       secure_port: 443
