@@ -2,3 +2,4 @@ vendor
 .idea
 .env
 gproxy.yaml
+bin

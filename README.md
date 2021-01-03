@@ -43,7 +43,15 @@ Library Documentation: [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?s
 
 # GProxy as a Service
 
+docker:
+
     docker pull graphikDB:gproxy:v0.0.17
+    
+homebrew(Mac):
+
+    brew tap graphik/tools git@github.com:graphikDB/graphik-homebrew.git
+
+    brew install gproxy
 
 - [x] Automatic [LetsEncrypt/Acme](https://letsencrypt.org/) Based SSL Encryption
 - [x] Transparent gRPC Proxy(including streaming)
