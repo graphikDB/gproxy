@@ -60,22 +60,6 @@ func WithSecurePort(securePort int) Opt {
 	}
 }
 
-// WithUnaryInterceptors adds gRPC unary interceptors to the proxy instance
-func WithUnaryInterceptors(uinterceptors ...grpc.UnaryServerInterceptor) Opt {
-	return func(p *Proxy) error {
-		p.uinterceptors = append(p.uinterceptors, uinterceptors...)
-		return nil
-	}
-}
-
-// WithStreamInterceptors adds gRPC stream interceptors to the proxy instance
-func WithStreamInterceptors(sinterceptors ...grpc.StreamServerInterceptor) Opt {
-	return func(p *Proxy) error {
-		p.sinterceptors = append(p.sinterceptors, sinterceptors...)
-		return nil
-	}
-}
-
 // WithCertCacheDir sets the directory in which certificates will be cached (default: /tmp/certs)
 func WithCertCacheDir(certCache string) Opt {
 	return func(p *Proxy) error {
@@ -104,18 +88,34 @@ func WithAutoRedirectHttps(redirect bool) Opt {
 	}
 }
 
-// WithHttpServerOpts executes the functions against the http(s) servers before they start
-func WithHttpServerOpts(opts ...func(srv *http.Server)) Opt {
+// WithHttpInit executes the functions against the http server before it starts
+func WithHttpInit(opts ...func(srv *http.Server)) Opt {
 	return func(p *Proxy) error {
-		p.httpServerOpts = append(p.httpServerOpts, opts...)
+		p.httpInit = append(p.httpInit, opts...)
 		return nil
 	}
 }
 
-// WithGrpcServerOpts executes the functions against the grpc servers before they start
-func WithGrpcServerOpts(opts ...func(srv *grpc.Server)) Opt {
+// WithGrpcInit executes the functions against the insecure grpc server before it starts
+func WithGrpcInit(opts ...func(srv *grpc.Server)) Opt {
 	return func(p *Proxy) error {
-		p.grpcServerOpts = append(p.grpcServerOpts, opts...)
+		p.grpcInit = append(p.grpcInit, opts...)
+		return nil
+	}
+}
+
+// WithHttpsInit executes the functions against the https server before it starts
+func WithHttpsInit(opts ...func(srv *http.Server)) Opt {
+	return func(p *Proxy) error {
+		p.httpsInit = append(p.httpInit, opts...)
+		return nil
+	}
+}
+
+// WithGrpcsInit executes the functions against the grpc secure server before it starts
+func WithGrpcsInit(opts ...func(srv *grpc.Server)) Opt {
+	return func(p *Proxy) error {
+		p.grpcsInit = append(p.grpcInit, opts...)
 		return nil
 	}
 }

@@ -39,19 +39,21 @@ type Middleware func(handler http.Handler) http.Handler
 
 // Proxy is a secure(lets encrypt) gRPC & http reverse proxy
 type Proxy struct {
-	mach           *machine.Machine
-	logger         *logger.Logger
-	triggers       []*trigger.Trigger
-	middlewares    []Middleware
-	uinterceptors  []grpc.UnaryServerInterceptor
-	sinterceptors  []grpc.StreamServerInterceptor
-	hostPolicy     autocert.HostPolicy
-	certCache      string
-	insecurePort   string
-	securePort     string
-	redirectHttps  bool
-	httpServerOpts []func(srv *http.Server)
-	grpcServerOpts []func(srv *grpc.Server)
+	mach          *machine.Machine
+	logger        *logger.Logger
+	triggers      []*trigger.Trigger
+	middlewares   []Middleware
+	hostPolicy    autocert.HostPolicy
+	certCache     string
+	insecurePort  string
+	securePort    string
+	redirectHttps bool
+	httpInit      []func(srv *http.Server)
+	httpsInit     []func(srv *http.Server)
+	grpcInit      []func(srv *grpc.Server)
+	grpcsInit     []func(srv *grpc.Server)
+	grpcOpts      []grpc.ServerOption
+	grpcsOpts     []grpc.ServerOption
 }
 
 // New creates a new proxy instance. A host policy & either http routes, gRPC routes, or both are required.
@@ -132,7 +134,7 @@ func (p *Proxy) Serve(ctx context.Context) error {
 	httpServer := &http.Server{
 		Handler: httpHandler,
 	}
-	for _, o := range p.httpServerOpts {
+	for _, o := range p.httpInit {
 		o(httpServer)
 	}
 	p.mach.Go(func(routine machine.Routine) {
@@ -152,7 +154,7 @@ func (p *Proxy) Serve(ctx context.Context) error {
 			Director: p.httpDirector(),
 		}),
 	}
-	for _, o := range p.httpServerOpts {
+	for _, o := range p.httpsInit {
 		o(tlsHttpServer)
 	}
 	p.mach.Go(func(routine machine.Routine) {
@@ -169,12 +171,13 @@ func (p *Proxy) Serve(ctx context.Context) error {
 		_ = tlsHttpServer.Shutdown(ctx)
 	})
 	gopts := []grpc.ServerOption{
-		grpc.ChainUnaryInterceptor(p.uinterceptors...),
-		grpc.ChainStreamInterceptor(p.sinterceptors...),
 		grpc.UnknownServiceHandler(proxy.TransparentHandler(p.gRPCDirector())),
 	}
+	for _, o := range p.grpcOpts {
+		gopts = append(gopts, o)
+	}
 	gserver := grpc.NewServer(gopts...)
-	for _, o := range p.grpcServerOpts {
+	for _, o := range p.grpcInit {
 		o(gserver)
 	}
 	p.mach.Go(func(routine machine.Routine) {
@@ -197,8 +200,14 @@ func (p *Proxy) Serve(ctx context.Context) error {
 			return
 		}
 	})
-	tlsGserver := grpc.NewServer(gopts...)
-	for _, o := range p.grpcServerOpts {
+	gsopts := []grpc.ServerOption{
+		grpc.UnknownServiceHandler(proxy.TransparentHandler(p.gRPCDirector())),
+	}
+	for _, o := range p.grpcsOpts {
+		gsopts = append(gopts, o)
+	}
+	tlsGserver := grpc.NewServer(gsopts...)
+	for _, o := range p.grpcsInit {
 		o(tlsGserver)
 	}
 	p.mach.Go(func(routine machine.Routine) {

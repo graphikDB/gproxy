@@ -2,16 +2,17 @@
 
 gproxy is a reverse proxy service AND library for creating flexible, expression-based, lets-encrypt secured gRPC and http reverse proxies
 
-[![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?status.svg)](https://godoc.org/github.com/graphikDB/gproxy)
+Library Documentation: [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?status.svg)](https://godoc.org/github.com/graphikDB/gproxy)
+
 [trigger/expression language reference]("https://github.com/graphikdb/trigger")
 
     go get -u github.com/graphikDB/gproxy
     
-    docker pull graphikDB:gproxy:v0.0.10
+    docker pull graphikDB:gproxy:v0.0.11
     
     
 ```go
-    proxy, err := gproxy.New(ctx,
+        proxy, err := gproxy.New(ctx,
 		// serve unencrypted http/gRPC traffic on port 8080
 		gproxy.WithInsecurePort(8080),
 		// serve encrypted http/gRPC traffic on port 443
@@ -28,6 +29,7 @@ gproxy is a reverse proxy service AND library for creating flexible, expression-
 		fmt.Println(err.Error())
 		return
 	}
+    // start blocking server
 	if err := proxy.Serve(ctx); err != nil {
 		fmt.Println(err.Error())
 		return
@@ -40,10 +42,7 @@ gproxy is a reverse proxy service AND library for creating flexible, expression-
 - [x] Transparent gRPC Proxy(including streaming)
 - [x] Transparent http Proxy(including websockets)
 - [x] Expression-Based Routing
-- [x] Add HTTP Middlewares
-- [x] Add gRPC Unary Interceptors
-- [x] Add gRPC Stream Interceptors
-- [ ] MTLS
+
 
 ## Service Features
 
@@ -54,7 +53,7 @@ gproxy is a reverse proxy service AND library for creating flexible, expression-
 - [x] Expression-Based Routing
 - [x] 12-Factor Config
 - [ ] Hot Reload Config
-- [x] Dockerized(graphikDB:gproxy:v0.0.10)
+- [x] Dockerized(graphikDB:gproxy:v0.0.11)
 - [x] K8s Deployment Manifest
 - [ ] Docker-Compose File
 
@@ -143,7 +142,7 @@ spec:
     spec:
       containers:
         - name: gproxy
-          image: graphikdb/gproxy:v0.0.10
+          image: graphikdb/gproxy:v0.0.11
           imagePullPolicy: Always
           ports:
             - containerPort: 80

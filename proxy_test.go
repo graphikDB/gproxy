@@ -49,10 +49,11 @@ func Test(t *testing.T) {
 		w.Write([]byte("hello world"))
 	}))
 	defer srv.Close()
+	lgger := logger.New(true)
 	proxy, err := gproxy.New(ctx,
 		gproxy.WithInsecurePort(8081),
 		gproxy.WithSecurePort(8082),
-		gproxy.WithLogger(logger.New(true)),
+		gproxy.WithLogger(lgger),
 		gproxy.WithTrigger(
 			fmt.Sprintf(
 				`this.http && this.host.contains("localhost") => "%s"`,
