@@ -2,13 +2,11 @@ package gproxy_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/graphikDB/gproxy"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 )
@@ -22,15 +20,15 @@ func ExampleNew() {
 	}))
 
 	proxy, err := gproxy.New(ctx,
+		// serve unencrypted http/gRPC traffic on port 8080
 		gproxy.WithInsecurePort(8080),
-		gproxy.WithHTTPRoutes(func(ctx context.Context, host string) (string, error) {
-			if strings.Contains(host, "localhost") {
-				return srv.URL, nil
-			}
-			return "", errors.New(fmt.Sprintf("%s not allowed", host))
-		}),
-		gproxy.WithHostPolicy(func(ctx context.Context, host string) error {
-			return nil
+		// serve encrypted http/gRPC traffic on port 443
+		gproxy.WithSecurePort(443),
+		// if the request is http & the request host contains localhost, proxy to the target server
+		gproxy.WithTrigger(fmt.Sprintf(`this.http && this.host.contains('localhost') => { "target": "%s"}`, srv.URL)),
+		// when deploying, set the letsencrypt allowed domains
+		gproxy.WithLetsEncryptHosts([]string{
+			// "www.graphikdb.io",
 		}))
 	if err != nil {
 		fmt.Println(err.Error())
@@ -49,16 +47,17 @@ func Test(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("hello world"))
 	}))
+
 	proxy, err := gproxy.New(ctx,
 		gproxy.WithInsecurePort(8080),
-		gproxy.WithHTTPRoutes(func(ctx context.Context, host string) (string, error) {
-			if strings.Contains(host, "localhost") {
-				return srv.URL, nil
-			}
-			return "", errors.New(fmt.Sprintf("%s not allowed", host))
-		}),
-		gproxy.WithHostPolicy(func(ctx context.Context, host string) error {
-			return nil
+		gproxy.WithTrigger(
+			fmt.Sprintf(
+				`this.http && this.host.contains('localhost') => { "target": "%s"}`,
+				srv.URL,
+			)),
+		// when deploying, set the letsencrypt allowed domains
+		gproxy.WithLetsEncryptHosts([]string{
+			// "www.graphikdb.io",
 		}))
 	if err != nil {
 		t.Fatal(err.Error())

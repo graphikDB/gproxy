@@ -3,9 +3,11 @@ package gproxy
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"github.com/autom8ter/machine"
 	"github.com/graphikDB/gproxy/codec"
 	"github.com/graphikDB/gproxy/logger"
+	"github.com/graphikDB/trigger"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/mwitkow/grpc-proxy/proxy"
 	"github.com/pkg/errors"
@@ -33,9 +35,6 @@ func init() {
 	encoding.RegisterCodec(codec.NewProxyCodec())
 }
 
-// RouterFunc takes a hostname and returns an endpoint to route to
-type RouterFunc func(ctx context.Context, host string) (string, error)
-
 // Middleware is an http middleware
 type Middleware func(handler http.Handler) http.Handler
 
@@ -43,8 +42,7 @@ type Middleware func(handler http.Handler) http.Handler
 type Proxy struct {
 	mach          *machine.Machine
 	logger        *logger.Logger
-	gRPCRouter    RouterFunc
-	httpRouter    RouterFunc
+	triggers      []*trigger.Trigger
 	middlewares   []Middleware
 	uinterceptors []grpc.UnaryServerInterceptor
 	sinterceptors []grpc.StreamServerInterceptor
@@ -58,10 +56,12 @@ type Proxy struct {
 func New(ctx context.Context, opts ...Opt) (*Proxy, error) {
 	p := &Proxy{}
 	for _, o := range opts {
-		o(p)
+		if err := o(p); err != nil {
+			return nil, err
+		}
 	}
-	if p.httpRouter == nil && p.gRPCRouter == nil {
-		return nil, errors.New("empty http & gRPC router")
+	if len(p.triggers) == 0 {
+		return nil, errors.New("zero triggers")
 	}
 	if p.hostPolicy == nil {
 		return nil, errors.New("empty host policy")
@@ -157,59 +157,57 @@ func (p *Proxy) Serve(ctx context.Context) error {
 	shutdown = append(shutdown, func(ctx context.Context) {
 		_ = tlsHttpServer.Shutdown(ctx)
 	})
-	if p.gRPCRouter != nil {
-		gopts := []grpc.ServerOption{
-			grpc.ChainUnaryInterceptor(
-				grpc_recovery.UnaryServerInterceptor(),
-			),
-			grpc.ChainStreamInterceptor(
-				grpc_recovery.StreamServerInterceptor(),
-			),
-			grpc.UnknownServiceHandler(proxy.TransparentHandler(p.gRPCDirector())),
-		}
-		gserver := grpc.NewServer(gopts...)
-		p.mach.Go(func(routine machine.Routine) {
-			matcher := imux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
-			p.logger.Debug("starting gRPC server", zap.String("address", matcher.Addr().String()))
-			if err := gserver.Serve(matcher); err != nil {
-				p.logger.Error("gRPC proxy failure", zap.Error(err))
-			}
-		})
-		shutdown = append(shutdown, func(ctx context.Context) {
-			stopped := make(chan struct{}, 1)
-			go func() {
-				gserver.GracefulStop()
-				stopped <- struct{}{}
-			}()
-			select {
-			case <-ctx.Done():
-				gserver.Stop()
-			case <-stopped:
-				return
-			}
-		})
-		tlsGserver := grpc.NewServer(gopts...)
-		p.mach.Go(func(routine machine.Routine) {
-			matcher := smux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
-			p.logger.Debug("starting secure gRPC server", zap.String("address", matcher.Addr().String()))
-			if err := tlsGserver.Serve(matcher); err != nil {
-				p.logger.Error("TLS gRPC proxy failure", zap.Error(err))
-			}
-		})
-		shutdown = append(shutdown, func(ctx context.Context) {
-			stopped := make(chan struct{}, 1)
-			go func() {
-				tlsGserver.GracefulStop()
-				stopped <- struct{}{}
-			}()
-			select {
-			case <-ctx.Done():
-				tlsGserver.Stop()
-			case <-stopped:
-				return
-			}
-		})
+	gopts := []grpc.ServerOption{
+		grpc.ChainUnaryInterceptor(
+			grpc_recovery.UnaryServerInterceptor(),
+		),
+		grpc.ChainStreamInterceptor(
+			grpc_recovery.StreamServerInterceptor(),
+		),
+		grpc.UnknownServiceHandler(proxy.TransparentHandler(p.gRPCDirector())),
 	}
+	gserver := grpc.NewServer(gopts...)
+	p.mach.Go(func(routine machine.Routine) {
+		matcher := imux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
+		p.logger.Debug("starting gRPC server", zap.String("address", matcher.Addr().String()))
+		if err := gserver.Serve(matcher); err != nil {
+			p.logger.Error("gRPC proxy failure", zap.Error(err))
+		}
+	})
+	shutdown = append(shutdown, func(ctx context.Context) {
+		stopped := make(chan struct{}, 1)
+		go func() {
+			gserver.GracefulStop()
+			stopped <- struct{}{}
+		}()
+		select {
+		case <-ctx.Done():
+			gserver.Stop()
+		case <-stopped:
+			return
+		}
+	})
+	tlsGserver := grpc.NewServer(gopts...)
+	p.mach.Go(func(routine machine.Routine) {
+		matcher := smux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
+		p.logger.Debug("starting secure gRPC server", zap.String("address", matcher.Addr().String()))
+		if err := tlsGserver.Serve(matcher); err != nil {
+			p.logger.Error("TLS gRPC proxy failure", zap.Error(err))
+		}
+	})
+	shutdown = append(shutdown, func(ctx context.Context) {
+		stopped := make(chan struct{}, 1)
+		go func() {
+			tlsGserver.GracefulStop()
+			stopped <- struct{}{}
+		}()
+		select {
+		case <-ctx.Done():
+			tlsGserver.Stop()
+		case <-stopped:
+			return
+		}
+	})
 
 	p.mach.Go(func(routine machine.Routine) {
 		if err := imux.Serve(); err != nil && !strings.Contains(err.Error(), "closed network connection") {
@@ -255,7 +253,7 @@ func (p *Proxy) gRPCDirector() proxy.StreamDirector {
 		if ok {
 			if val, exists := md[":authority"]; exists && val[0] != "" {
 				now := time.Now()
-				target, err := p.gRPCRouter(ctx, val[0])
+				target, err := p.getgRPCRoute(val[0], fullMethodName)
 				if err != nil {
 					return nil, nil, status.Error(codes.InvalidArgument, err.Error())
 				}
@@ -300,7 +298,8 @@ func (p *Proxy) httpDirector() func(r *http.Request) {
 			fields = append(fields, zap.Duration("duration", dur))
 			p.logger.Debug("proxied request", fields...)
 		}()
-		target, err := p.httpRouter(req.Context(), req.Host)
+
+		target, err := p.getHttpRoute(req)
 		if err != nil {
 			p.logger.Error("failed to find routing target", zap.Error(err))
 			return
@@ -330,6 +329,47 @@ func (p *Proxy) httpDirector() func(r *http.Request) {
 			}
 		}
 	}
+}
+
+func (p *Proxy) getHttpRoute(req *http.Request) (string, error) {
+	data := map[string]interface{}{
+		"http": true,
+		"grpc": false,
+		"host": req.Host,
+		"path": req.URL.Path,
+	}
+	for _, trig := range p.triggers {
+		result, err := trig.Trigger(data)
+		if err == nil {
+			target, ok := result["target"].(string)
+			if ok {
+				if !strings.Contains(target, "http") {
+					target = fmt.Sprintf("http://%s", target)
+				}
+				return target, nil
+			}
+		}
+	}
+	return "", errors.New("zero http routes for request")
+}
+
+func (p *Proxy) getgRPCRoute(host, fullMethod string) (string, error) {
+	data := map[string]interface{}{
+		"http": false,
+		"grpc": true,
+		"host": host,
+		"path": fullMethod,
+	}
+	for _, trig := range p.triggers {
+		result, err := trig.Trigger(data)
+		if err == nil {
+			target, ok := result["target"].(string)
+			if ok {
+				return target, nil
+			}
+		}
+	}
+	return "", errors.New("zero gRPC routes for request")
 }
 
 func joinURLPath(a, b *url.URL) (path, rawpath string) {
@@ -364,16 +404,6 @@ func singleJoiningSlash(a, b string) string {
 	}
 	return a + b
 }
-
-//
-//func getSubdomain(host string) string {
-//	host = strings.TrimSpace(host)
-//	host_parts := strings.Split(host, ".")
-//	if len(host_parts) >= 2 {
-//		return host_parts[0]
-//	}
-//	return ""
-//}
 
 func invertContext(ctx context.Context) context.Context {
 	md, ok := metadata.FromIncomingContext(ctx)

@@ -1,83 +1,96 @@
 package gproxy
 
 import (
+	"context"
 	"fmt"
 	"github.com/graphikDB/gproxy/logger"
-	"golang.org/x/crypto/acme/autocert"
+	"github.com/graphikDB/trigger"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
 
 // Opt is a function that configures a Proxy instance
-type Opt func(p *Proxy)
+type Opt func(p *Proxy) error
 
-// WithHostPolicy sets the host policy function on the  proxy(required)
-func WithHostPolicy(policy autocert.HostPolicy) Opt {
-	return func(p *Proxy) {
-		p.hostPolicy = policy
+// WithLetsEncryptHosts sets the letsencryp host policy on the proxy(required)
+func WithLetsEncryptHosts(allowedHosts []string) Opt {
+	return func(p *Proxy) error {
+		p.hostPolicy = func(ctx context.Context, host string) error {
+			for _, h := range allowedHosts {
+				if h == host {
+					return nil
+				}
+			}
+			return errors.Errorf("forbidden host: %s", host)
+		}
+		return nil
 	}
 }
 
 // WithLogger sets the proxies logger instance(optional)
 func WithLogger(logger *logger.Logger) Opt {
-	return func(p *Proxy) {
+	return func(p *Proxy) error {
 		p.logger = logger
+		return nil
 	}
 }
 
 // WithMiddlewares sets the http middlewares on encrypted & non-encrypted traffic(optional)
 func WithMiddlewares(middlewares ...Middleware) Opt {
-	return func(p *Proxy) {
+	return func(p *Proxy) error {
 		p.middlewares = append(p.middlewares, middlewares...)
-	}
-}
-
-// WithGRPCRoutes sets the gRPC RouterFunc which takes a hostname and returns an endpoint to route to.
-// either http routes, gRPC routes, or both are required.
-func WithGRPCRoutes(router RouterFunc) Opt {
-	return func(p *Proxy) {
-		p.gRPCRouter = router
-	}
-}
-
-// WithHTTPRoutes sets the http RouterFunc which takes a hostname and returns an endpoint to route to
-// either http routes, gRPC routes, or both are required.
-func WithHTTPRoutes(router RouterFunc) Opt {
-	return func(p *Proxy) {
-		p.httpRouter = router
+		return nil
 	}
 }
 
 // WithInsecurePort sets the port that non-encrypted traffic will be served on(optional)
 func WithInsecurePort(insecurePort int) Opt {
-	return func(p *Proxy) {
+	return func(p *Proxy) error {
 		p.insecurePort = fmt.Sprintf(":%v", insecurePort)
+		return nil
 	}
 }
 
 // WithSecurePort sets the port that encrypted traffic will be served on(optional)
 func WithSecurePort(securePort int) Opt {
-	return func(p *Proxy) {
+	return func(p *Proxy) error {
 		p.securePort = fmt.Sprintf(":%v", securePort)
+		return nil
 	}
 }
 
 // WithUnaryInterceptors adds gRPC unary interceptors to the proxy instance
 func WithUnaryInterceptors(uinterceptors ...grpc.UnaryServerInterceptor) Opt {
-	return func(p *Proxy) {
+	return func(p *Proxy) error {
 		p.uinterceptors = append(p.uinterceptors, uinterceptors...)
+		return nil
 	}
 }
 
 // WithStreamInterceptors adds gRPC stream interceptors to the proxy instance
 func WithStreamInterceptors(sinterceptors ...grpc.StreamServerInterceptor) Opt {
-	return func(p *Proxy) {
+	return func(p *Proxy) error {
 		p.sinterceptors = append(p.sinterceptors, sinterceptors...)
+		return nil
 	}
 }
 
 // WithCertCacheDir sets the directory in which certificates will be cached (default: /tmp/certs)
 func WithCertCacheDir(certCache string) Opt {
-	return func(p *Proxy) {
+	return func(p *Proxy) error {
 		p.certCache = certCache
+		return nil
+	}
+}
+
+// WithTrigger adds a trigger/expression based route to the reverse proxy
+func WithTrigger(triggerExpression string) Opt {
+	return func(p *Proxy) error {
+		trig, err := trigger.NewArrowTrigger(triggerExpression)
+		if err != nil {
+			return err
+		}
+		p.triggers = append(p.triggers, trig)
+		return nil
 	}
 }

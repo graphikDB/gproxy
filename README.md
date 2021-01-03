@@ -1,29 +1,26 @@
 ![graphik](assets/graphik-logo.jpg)
 
-gproxy is a reverse proxy service AND library for creating lets-encrypt secured gRPC and http reverse proxies
+gproxy is a reverse proxy service AND library for creating flexible, expression-based, lets-encrypt secured gRPC and http reverse proxies
 
 [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?status.svg)](https://godoc.org/github.com/graphikDB/gproxy)
+[trigger/expression language reference]("https://github.com/graphikdb/trigger")
 
-    
     go get -u github.com/graphikDB/gproxy
     
-    docker pull graphikDB:gproxy:v0.0.6
+    docker pull graphikDB:gproxy:v0.0.7
     
     
 ```go
-        proxy, err := gproxy.New(ctx,
+    proxy, err := gproxy.New(ctx,
+		// serve unencrypted http/gRPC traffic on port 8080
 		gproxy.WithInsecurePort(8080),
-		gproxy.WithHTTPRoutes(func(ctx context.Context, host string) string {
-			if host == "acme.graphik.com" {
-				return "graphik.acme.cluster.local"
-			}
-			return "" //
-		}),
-		gproxy.WithHostPolicy(func(ctx context.Context, host string) error {
-			if host != "www.graphik.io" {
-                return errors.New("forbidden")
-            }       
-            return nil
+		// serve encrypted http/gRPC traffic on port 443
+		gproxy.WithSecurePort(443),
+		// if the request is http & the request host contains localhost, proxy to the target server
+		gproxy.WithTrigger(fmt.Sprintf(`this.http && this.host.contains('localhost') => { "target": "%s"}`, srv.URL)), // must return "target" attribute in the json map
+		// when deploying, set the letsencrypt list of allowed domains
+		gproxy.WithLetsEncryptHosts([]string{
+			// "www.graphikdb.io",
 		}))
 	if err != nil {
 		fmt.Println(err.Error())
@@ -35,6 +32,18 @@ gproxy is a reverse proxy service AND library for creating lets-encrypt secured 
 	}
 ```
 
+## Features
+
+- [x] Use as Library
+- [x] Use as Service
+- [x] Automatic Lets Encrypt Based SSL Encryption
+- [x] Transparent gRPC Proxy(including streaming)
+- [x] Transparent http Proxy(including websockets)
+- [x] Expression-Based Routing
+- [x] K8s Deployment Manifest
+- [x] 12-Factor Config
+- [ ] Hot Reload Config
+
 # GProxy as a Service
     
 default config path: ./gproxy.yaml which may be changed with the --config flag or the GRAPHIK_CONFIG environmental variable
@@ -42,23 +51,15 @@ default config path: ./gproxy.yaml which may be changed with the --config flag o
 Example Config:
 
 ```yaml
-# enable debug logs
 debug: true
-# lets encrypt autocert allowed domains
 autocert:
   - "www.example.com"
 routing:
-  # http reverse proxy routes using trigger framework: github.com/graphikDB/trigger
-  http:
-    - "this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
-  grpc:
-    - "this.host == 'localhost:8080' => { 'target': 'localhost:7820' }"
+  - "this.http && this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
+  - "this.grpc && this.host == 'localhost:8080' => { 'target': 'localhost:7820' }"
 server:
-  # unencrypted server port
   insecure_port: 8080
-  # encrypted server port
   secure_port: 443
-# cross origin resource sharing config
 cors:
   origins: "*"
   methods: "*"
@@ -92,10 +93,8 @@ data:
     autocert:
       - "www.example.com"
     routing:
-      http:
-        - "this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
-      grpc:
-        - "this.host == 'localhost:8080' => { 'target': 'localhost:7820' }"
+      - "this.http && this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
+      - "this.grpc && this.host == 'localhost:8080' => { 'target': 'localhost:7820' }"
     server:
       insecure_port: 8080
       secure_port: 443
@@ -129,7 +128,7 @@ spec:
     spec:
       containers:
         - name: gproxy
-          image: graphikdb/gproxy:v0.0.6
+          image: graphikdb/gproxy:v0.0.7
           imagePullPolicy: Always
           ports:
             - containerPort: 80
@@ -178,3 +177,7 @@ spec:
 ```
 
 apply with `kubectl apply -f k8s.yaml`
+
+### Docker-Compose
+
+**Coming Soon**
