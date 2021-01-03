@@ -8,7 +8,7 @@ Library Documentation: [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?s
 
     go get -u github.com/graphikDB/gproxy
     
-    docker pull graphikDB:gproxy:v0.0.11
+    docker pull graphikDB:gproxy:v0.0.12
     
     
 ```go
@@ -53,7 +53,7 @@ Library Documentation: [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?s
 - [x] Expression-Based Routing
 - [x] 12-Factor Config
 - [ ] Hot Reload Config
-- [x] Dockerized(graphikDB:gproxy:v0.0.11)
+- [x] Dockerized(graphikDB:gproxy:v0.0.12)
 - [x] K8s Deployment Manifest
 - [ ] Docker-Compose File
 
@@ -142,7 +142,7 @@ spec:
     spec:
       containers:
         - name: gproxy
-          image: graphikdb/gproxy:v0.0.11
+          image: graphikdb/gproxy:v0.0.12
           imagePullPolicy: Always
           ports:
             - containerPort: 80

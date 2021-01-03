@@ -39,6 +39,7 @@ type Middleware func(handler http.Handler) http.Handler
 
 // Proxy is a secure(lets encrypt) gRPC & http reverse proxy
 type Proxy struct {
+	mu            sync.RWMutex
 	mach          *machine.Machine
 	logger        *logger.Logger
 	triggers      []*trigger.Trigger
@@ -268,6 +269,22 @@ func (p *Proxy) Serve(ctx context.Context) error {
 	return nil
 }
 
+// OverrideTriggers overrides the triggers-routes on the Proxy. It is concurrency safe
+func (p *Proxy) OverrideTriggers(expressions []string) error {
+	var triggers []*trigger.Trigger
+	for _, exp := range expressions {
+		t, err := trigger.NewArrowTrigger(exp)
+		if err != nil {
+			return err
+		}
+		triggers = append(triggers, t)
+	}
+	p.mu.Lock()
+	p.triggers = triggers
+	p.mu.Unlock()
+	return nil
+}
+
 func (p *Proxy) gRPCDirector() proxy.StreamDirector {
 	return func(ctx context.Context, fullMethodName string) (context.Context, *grpc.ClientConn, error) {
 		ctx = invertContext(ctx)
@@ -364,6 +381,8 @@ func (p *Proxy) getHttpRoute(req *http.Request) (string, error) {
 		"host":    req.Host,
 		"headers": headers,
 	}
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 	for _, trig := range p.triggers {
 		result, err := trig.Trigger(data)
 		if err == nil {
@@ -391,6 +410,8 @@ func (p *Proxy) getgRPCRoute(host, fullMethod string, md metadata.MD) (string, e
 		"path":     fullMethod,
 		"metadata": meta,
 	}
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 	for _, trig := range p.triggers {
 		result, err := trig.Trigger(data)
 		if err == nil {
