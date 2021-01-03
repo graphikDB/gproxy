@@ -14,6 +14,9 @@ Library Documentation: [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?s
 - [x] Transparent gRPC Proxy(including streaming)
 - [x] Transparent http Proxy(including websockets)
 - [x] [Expression-Based](github.com/graphikDB/trigger) Routing
+- [x] [Expression-Based](github.com/graphikDB/trigger) Acme Host Policies
+- [x] Functional Arguments for extensive configuration of http(s) & grpc servers
+- [x] Graceful Shutdown
 
 ```go
         proxy, err := gproxy.New(ctx,
@@ -26,9 +29,7 @@ Library Documentation: [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?s
         // if the request is gRPC & the request host contains localhost, proxy to the target gRPC server
 		gproxy.WithTrigger(fmt.Sprintf(`this.grpc && this.host.contains('localhost') => "%s"`, grpcServer.URL)),
 		// when deploying, set the letsencrypt list of allowed domains
-		gproxy.WithLetsEncryptHosts([]string{
-			// "www.graphikdb.io",
-		}))
+		gproxy.WithAcmePolicy("this.host.contains('graphikdb.io')"))
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -42,16 +43,18 @@ Library Documentation: [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?s
 
 # GProxy as a Service
 
-    docker pull graphikDB:gproxy:v0.0.15
+    docker pull graphikDB:gproxy:v0.0.16
 
 - [x] Automatic [LetsEncrypt/Acme](https://letsencrypt.org/) Based SSL Encryption
 - [x] Transparent gRPC Proxy(including streaming)
 - [x] Transparent http Proxy(including websockets)
+- [x] Graceful Shutdown
 - [x] CORS
+- [x] [Expression-Based](github.com/graphikDB/trigger) Acme Host Policies
 - [x] [Expression-Based](github.com/graphikDB/trigger) Routing
 - [x] 12-Factor Config
 - [x] Hot Reload Config
-- [x] Dockerized(graphikDB:gproxy:v0.0.15)
+- [x] Dockerized(graphikDB:gproxy:v0.0.16)
 - [x] K8s Deployment Manifest
     
 default config path: ./gproxy.yaml which may be changed with the --config flag or the GRAPHIK_CONFIG environmental variable
@@ -61,7 +64,7 @@ Example Config:
 ```yaml
 debug: true
 autocert:
-  - "www.example.com"
+  policy: "this.host.contains('graphikdb.io')"
 routing:
   - "this.http && this.host == 'localhost:8080' => 'http://localhost:7821'"
   - "this.grpc && this.host == 'localhost:8080' => 'localhost:7820'"
@@ -100,7 +103,7 @@ data:
   gproxy.yaml: |-
     debug: true
     autocert:
-      - "www.example.com"
+      policy: "this.host.contains('graphikdb.io')"
     routing:
       - "this.http && this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
       - "this.grpc && this.host == 'localhost:8080' => { 'target': 'localhost:7820' }"
@@ -138,7 +141,7 @@ spec:
     spec:
       containers:
         - name: gproxy
-          image: graphikdb/gproxy:v0.0.15
+          image: graphikdb/gproxy:v0.0.16
           imagePullPolicy: Always
           ports:
             - containerPort: 80

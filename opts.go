@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/graphikDB/gproxy/logger"
 	"github.com/graphikDB/trigger"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"net/http"
 )
@@ -13,16 +12,19 @@ import (
 // Opt is a function that configures a Proxy instance
 type Opt func(p *Proxy) error
 
-// WithLetsEncryptHosts sets the letsencryp host policy on the proxy(required)
-func WithLetsEncryptHosts(allowedHosts []string) Opt {
+// WithAcmePolicy sets an decision expression that specifies which host names the Acme client may respond to
+// expression ref: github.com/graphikdb/trigger
+// ex this.host.contains('graphikdb.io')
+func WithAcmePolicy(decision string) Opt {
 	return func(p *Proxy) error {
+		decision, err := trigger.NewDecision(decision)
+		if err != nil {
+			return err
+		}
 		p.hostPolicy = func(ctx context.Context, host string) error {
-			for _, h := range allowedHosts {
-				if h == host {
-					return nil
-				}
-			}
-			return errors.Errorf("forbidden host: %s", host)
+			return decision.Eval(map[string]interface{}{
+				"host": host,
+			})
 		}
 		return nil
 	}

@@ -28,9 +28,7 @@ func ExampleNew() {
 		// if the request is http & the request host contains localhost, proxy to the target server
 		gproxy.WithTrigger(fmt.Sprintf(`this.http && this.host.contains('localhost') => '%s'`, srv.URL)),
 		// when deploying, set the letsencrypt allowed domains
-		gproxy.WithLetsEncryptHosts([]string{
-			// "www.graphikdb.io",
-		}))
+		gproxy.WithAcmePolicy("this.host.contains('graphikdb.io')"))
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -60,9 +58,7 @@ func Test(t *testing.T) {
 				srv.URL,
 			)),
 		// when deploying, set the letsencrypt allowed domains
-		gproxy.WithLetsEncryptHosts([]string{
-			// "www.graphikdb.io",
-		}))
+		gproxy.WithAcmePolicy("this.host.contains('graphikdb.io')"))
 	if err != nil {
 		t.Fatal(err.Error())
 	}

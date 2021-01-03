@@ -45,7 +45,7 @@ func main() {
 	var (
 		insecurePort = viper.GetInt("server.insecure_port")
 		securePort   = viper.GetInt("server.secure_port")
-		adomains     = viper.GetStringSlice("autocert")
+		policy       = viper.GetString("autocert.policy")
 		corigins     = viper.GetStringSlice("cors.origins")
 		cheaders     = viper.GetStringSlice("cors.headers")
 		cmethods     = viper.GetStringSlice("cors.methods")
@@ -54,8 +54,8 @@ func main() {
 	)
 
 	lgger := logger.New(debug)
-	if len(adomains) == 0 {
-		lgger.Debug("config: empty autocert hosts")
+	if policy == "" {
+		lgger.Debug("config: empty autocert policy")
 	}
 	if len(routing) == 0 {
 		lgger.Error("config: at least one routing trigger/expression entry expected")
@@ -72,8 +72,8 @@ func main() {
 		gproxy.WithHttpsInit(gproxy.WithMiddlewares(c.Handler)),
 		gproxy.WithInsecurePort(insecurePort),
 		gproxy.WithSecurePort(securePort),
+		gproxy.WithAcmePolicy(policy),
 	}
-	opts = append(opts, gproxy.WithLetsEncryptHosts(adomains))
 	for _, route := range routing {
 		opts = append(opts, gproxy.WithTrigger(route))
 	}
