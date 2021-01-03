@@ -2,7 +2,7 @@
 
 gproxy is a reverse proxy service AND library for creating flexible, [expression-based]((github.com/graphikDB/trigger)), [lets-encrypt/acme]((https://letsencrypt.org/)) secured gRPC/http reverse proxies    
   
-## GProxy as a Library
+# GProxy as a Library
 
 Library Documentation: [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?status.svg)](https://godoc.org/github.com/graphikDB/gproxy)
 
