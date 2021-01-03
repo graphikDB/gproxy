@@ -15,11 +15,10 @@ data:
       - "www.example.com"
     routing:
       http:
-        - "this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
-      grpc:
-        - "this.host == 'localhost:8080' => { 'target': 'localhost:7820' }"
+        - "this.http && this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
+        - "this.grpc && this.host == 'localhost:8080' => { 'target': 'localhost:7820' }"
     server:
-      insecure_port: 8080
+      insecure_port: 80
       secure_port: 443
     cors:
       origins: "*"
@@ -51,7 +50,7 @@ spec:
     spec:
       containers:
         - name: gproxy
-          image: graphikdb/gproxy:v0.0.7
+          image: graphikdb/gproxy:v0.0.8
           imagePullPolicy: Always
           ports:
             - containerPort: 80

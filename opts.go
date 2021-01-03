@@ -94,3 +94,11 @@ func WithTrigger(triggerExpression string) Opt {
 		return nil
 	}
 }
+
+// WithAutoRedirectHttps makes the proxy redirect http requests to https(443)
+func WithAutoRedirectHttps(redirect bool) Opt {
+	return func(p *Proxy) error {
+		p.redirectHttps = redirect
+		return nil
+	}
+}

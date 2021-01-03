@@ -7,7 +7,7 @@ gproxy is a reverse proxy service AND library for creating flexible, expression-
 
     go get -u github.com/graphikDB/gproxy
     
-    docker pull graphikDB:gproxy:v0.0.7
+    docker pull graphikDB:gproxy:v0.0.8
     
     
 ```go
@@ -32,17 +32,30 @@ gproxy is a reverse proxy service AND library for creating flexible, expression-
 	}
 ```
 
-## Features
+## Library Features
 
-- [x] Use as Library
-- [x] Use as Service
 - [x] Automatic Lets Encrypt Based SSL Encryption
 - [x] Transparent gRPC Proxy(including streaming)
 - [x] Transparent http Proxy(including websockets)
 - [x] Expression-Based Routing
-- [x] K8s Deployment Manifest
+- [x] Add HTTP Middlewares
+- [x] Add gRPC Unary Interceptors
+- [x] Add gRPC Stream Interceptors
+- [ ] MTLS
+
+## Service Features
+
+- [x] Automatic Lets Encrypt Based SSL Encryption
+- [x] Transparent gRPC Proxy(including streaming)
+- [x] Transparent http Proxy(including websockets)
+- [x] CORS
+- [x] Expression-Based Routing
 - [x] 12-Factor Config
 - [ ] Hot Reload Config
+- [x] Dockerized(graphikDB:gproxy:v0.0.8)
+- [x] K8s Deployment Manifest
+- [ ] Docker-Compose File
+
 
 # GProxy as a Service
     
@@ -128,7 +141,7 @@ spec:
     spec:
       containers:
         - name: gproxy
-          image: graphikdb/gproxy:v0.0.7
+          image: graphikdb/gproxy:v0.0.8
           imagePullPolicy: Always
           ports:
             - containerPort: 80

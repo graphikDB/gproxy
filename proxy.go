@@ -8,7 +8,6 @@ import (
 	"github.com/graphikDB/gproxy/codec"
 	"github.com/graphikDB/gproxy/logger"
 	"github.com/graphikDB/trigger"
-	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/mwitkow/grpc-proxy/proxy"
 	"github.com/pkg/errors"
 	"github.com/soheilhy/cmux"
@@ -50,6 +49,7 @@ type Proxy struct {
 	certCache     string
 	insecurePort  string
 	securePort    string
+	redirectHttps bool
 }
 
 // New creates a new proxy instance. A host policy & either http routes, gRPC routes, or both are required.
@@ -94,10 +94,11 @@ func (p *Proxy) Serve(ctx context.Context) error {
 			HostPolicy: p.hostPolicy,
 			Cache:      autocert.DirCache(p.certCache),
 		}
-		tlsConfig = &tls.Config{GetCertificate: m.GetCertificate}
-		shutdown  []func(ctx context.Context)
+		tlsConfig = &tls.Config{
+			GetCertificate: m.GetCertificate,
+		}
+		shutdown []func(ctx context.Context)
 	)
-
 	insecure, err := net.Listen("tcp", p.insecurePort)
 	if err != nil {
 		return err
@@ -108,27 +109,26 @@ func (p *Proxy) Serve(ctx context.Context) error {
 	}
 	defer insecure.Close()
 	defer secure.Close()
+	imux := cmux.New(insecure)
+	smux := cmux.New(secure)
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(interrupt)
-
-	imux := cmux.New(insecure)
-	smux := cmux.New(secure)
-	var handler http.Handler
-	if p.httpDirector() != nil {
-		handler = m.HTTPHandler(&httputil.ReverseProxy{
+	var httpHandler http.Handler
+	if !p.redirectHttps {
+		httpHandler = m.HTTPHandler(&httputil.ReverseProxy{
 			Director: p.httpDirector(),
 		})
 	} else {
-		handler = m.HTTPHandler(nil)
+		httpHandler = m.HTTPHandler(nil)
 	}
 	if len(p.middlewares) > 0 {
 		for _, h := range p.middlewares {
-			handler = h(handler)
+			httpHandler = h(httpHandler)
 		}
 	}
 	httpServer := &http.Server{
-		Handler: handler,
+		Handler: httpHandler,
 	}
 
 	p.mach.Go(func(routine machine.Routine) {
@@ -143,7 +143,9 @@ func (p *Proxy) Serve(ctx context.Context) error {
 	})
 
 	tlsHttpServer := &http.Server{
-		Handler: handler,
+		Handler: m.HTTPHandler(&httputil.ReverseProxy{
+			Director: p.httpDirector(),
+		}),
 	}
 
 	p.mach.Go(func(routine machine.Routine) {
@@ -158,12 +160,8 @@ func (p *Proxy) Serve(ctx context.Context) error {
 		_ = tlsHttpServer.Shutdown(ctx)
 	})
 	gopts := []grpc.ServerOption{
-		grpc.ChainUnaryInterceptor(
-			grpc_recovery.UnaryServerInterceptor(),
-		),
-		grpc.ChainStreamInterceptor(
-			grpc_recovery.StreamServerInterceptor(),
-		),
+		grpc.ChainUnaryInterceptor(p.uinterceptors...),
+		grpc.ChainStreamInterceptor(p.sinterceptors...),
 		grpc.UnknownServiceHandler(proxy.TransparentHandler(p.gRPCDirector())),
 	}
 	gserver := grpc.NewServer(gopts...)
@@ -253,7 +251,7 @@ func (p *Proxy) gRPCDirector() proxy.StreamDirector {
 		if ok {
 			if val, exists := md[":authority"]; exists && val[0] != "" {
 				now := time.Now()
-				target, err := p.getgRPCRoute(val[0], fullMethodName)
+				target, err := p.getgRPCRoute(val[0], fullMethodName, md)
 				if err != nil {
 					return nil, nil, status.Error(codes.InvalidArgument, err.Error())
 				}
@@ -332,11 +330,15 @@ func (p *Proxy) httpDirector() func(r *http.Request) {
 }
 
 func (p *Proxy) getHttpRoute(req *http.Request) (string, error) {
+	headers := map[string]interface{}{}
+	for k, v := range req.Header {
+		headers[k] = v[0]
+	}
 	data := map[string]interface{}{
-		"http": true,
-		"grpc": false,
-		"host": req.Host,
-		"path": req.URL.Path,
+		"http":    true,
+		"grpc":    false,
+		"host":    req.Host,
+		"headers": headers,
 	}
 	for _, trig := range p.triggers {
 		result, err := trig.Trigger(data)
@@ -353,12 +355,17 @@ func (p *Proxy) getHttpRoute(req *http.Request) (string, error) {
 	return "", errors.New("zero http routes for request")
 }
 
-func (p *Proxy) getgRPCRoute(host, fullMethod string) (string, error) {
+func (p *Proxy) getgRPCRoute(host, fullMethod string, md metadata.MD) (string, error) {
+	meta := map[string]interface{}{}
+	for k, v := range md {
+		meta[k] = v[0]
+	}
 	data := map[string]interface{}{
-		"http": false,
-		"grpc": true,
-		"host": host,
-		"path": fullMethod,
+		"http":     false,
+		"grpc":     true,
+		"host":     host,
+		"path":     fullMethod,
+		"metadata": meta,
 	}
 	for _, trig := range p.triggers {
 		result, err := trig.Trigger(data)
