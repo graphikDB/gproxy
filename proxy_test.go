@@ -26,7 +26,7 @@ func ExampleNew() {
 		// serve encrypted http/gRPC traffic on port 443
 		gproxy.WithSecurePort(443),
 		// if the request is http & the request host contains localhost, proxy to the target server
-		gproxy.WithTrigger(fmt.Sprintf(`this.http && this.host.contains('localhost') => '%s'`, srv.URL)),
+		gproxy.WithRoute(fmt.Sprintf(`this.http && this.host.contains('localhost') => '%s'`, srv.URL)),
 		// when deploying, set the letsencrypt allowed domains
 		gproxy.WithAcmePolicy("this.host.contains('graphikdb.io')"))
 	if err != nil {
@@ -52,7 +52,7 @@ func Test(t *testing.T) {
 		gproxy.WithInsecurePort(8081),
 		gproxy.WithSecurePort(8082),
 		gproxy.WithLogger(lgger),
-		gproxy.WithTrigger(
+		gproxy.WithRoute(
 			fmt.Sprintf(
 				`this.http && this.host.contains("localhost") => "%s"`,
 				srv.URL,

@@ -62,8 +62,8 @@ func WithCertCacheDir(certCache string) Opt {
 	}
 }
 
-// WithTrigger adds a trigger/expression based route to the reverse proxy
-func WithTrigger(triggerExpression string) Opt {
+// WithRoute adds a trigger/expression based route to the reverse proxy
+func WithRoute(triggerExpression string) Opt {
 	return func(p *Proxy) error {
 		trig, err := trigger.NewArrowTrigger(triggerExpression)
 		if err != nil {

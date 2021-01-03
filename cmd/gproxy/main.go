@@ -75,7 +75,7 @@ func main() {
 		gproxy.WithAcmePolicy(policy),
 	}
 	for _, route := range routing {
-		opts = append(opts, gproxy.WithTrigger(route))
+		opts = append(opts, gproxy.WithRoute(route))
 	}
 	proxy, err := gproxy.New(ctx, opts...)
 	if err != nil {

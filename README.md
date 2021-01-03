@@ -25,9 +25,9 @@ Library Documentation: [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?s
 		// serve encrypted http/gRPC traffic on port 443
 		gproxy.WithSecurePort(443),
 		// if the request is http & the request host contains localhost, proxy to the target http server
-		gproxy.WithTrigger(fmt.Sprintf(`this.http && this.host.contains('localhost') => "%s"`, httpServer.URL)),
+		gproxy.WithRoute(fmt.Sprintf(`this.http && this.host.contains('localhost') => "%s"`, httpServer.URL)),
         // if the request is gRPC & the request host contains localhost, proxy to the target gRPC server
-		gproxy.WithTrigger(fmt.Sprintf(`this.grpc && this.host.contains('localhost') => "%s"`, grpcServer.URL)),
+		gproxy.WithRoute(fmt.Sprintf(`this.grpc && this.host.contains('localhost') => "%s"`, grpcServer.URL)),
 		// when deploying, set the letsencrypt list of allowed domains
 		gproxy.WithAcmePolicy("this.host.contains('graphikdb.io')"))
 	if err != nil {
@@ -43,7 +43,7 @@ Library Documentation: [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?s
 
 # GProxy as a Service
 
-    docker pull graphikDB:gproxy:v0.0.16
+    docker pull graphikDB:gproxy:v0.0.17
 
 - [x] Automatic [LetsEncrypt/Acme](https://letsencrypt.org/) Based SSL Encryption
 - [x] Transparent gRPC Proxy(including streaming)
@@ -54,7 +54,7 @@ Library Documentation: [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?s
 - [x] [Expression-Based](github.com/graphikDB/trigger) Routing
 - [x] 12-Factor Config
 - [x] Hot Reload Config
-- [x] Dockerized(graphikDB:gproxy:v0.0.16)
+- [x] Dockerized(graphikDB:gproxy:v0.0.17)
 - [x] K8s Deployment Manifest
     
 default config path: ./gproxy.yaml which may be changed with the --config flag or the GRAPHIK_CONFIG environmental variable
@@ -141,7 +141,7 @@ spec:
     spec:
       containers:
         - name: gproxy
-          image: graphikdb/gproxy:v0.0.16
+          image: graphikdb/gproxy:v0.0.17
           imagePullPolicy: Always
           ports:
             - containerPort: 80
