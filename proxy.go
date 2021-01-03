@@ -39,17 +39,19 @@ type Middleware func(handler http.Handler) http.Handler
 
 // Proxy is a secure(lets encrypt) gRPC & http reverse proxy
 type Proxy struct {
-	mach          *machine.Machine
-	logger        *logger.Logger
-	triggers      []*trigger.Trigger
-	middlewares   []Middleware
-	uinterceptors []grpc.UnaryServerInterceptor
-	sinterceptors []grpc.StreamServerInterceptor
-	hostPolicy    autocert.HostPolicy
-	certCache     string
-	insecurePort  string
-	securePort    string
-	redirectHttps bool
+	mach           *machine.Machine
+	logger         *logger.Logger
+	triggers       []*trigger.Trigger
+	middlewares    []Middleware
+	uinterceptors  []grpc.UnaryServerInterceptor
+	sinterceptors  []grpc.StreamServerInterceptor
+	hostPolicy     autocert.HostPolicy
+	certCache      string
+	insecurePort   string
+	securePort     string
+	redirectHttps  bool
+	httpServerOpts []func(srv *http.Server)
+	grpcServerOpts []func(srv *grpc.Server)
 }
 
 // New creates a new proxy instance. A host policy & either http routes, gRPC routes, or both are required.
@@ -130,11 +132,14 @@ func (p *Proxy) Serve(ctx context.Context) error {
 	httpServer := &http.Server{
 		Handler: httpHandler,
 	}
-
+	for _, o := range p.httpServerOpts {
+		o(httpServer)
+	}
 	p.mach.Go(func(routine machine.Routine) {
 		matcher := imux.Match(cmux.Any())
 		p.logger.Debug("starting http server", zap.String("address", matcher.Addr().String()))
-		if err := httpServer.Serve(matcher); err != nil && err != http.ErrServerClosed {
+		if err := httpServer.Serve(matcher); err != nil && err != http.ErrServerClosed &&
+			!strings.Contains(err.Error(), "mux: listener closed") {
 			p.logger.Error("http proxy failure", zap.Error(err))
 		}
 	})
@@ -147,11 +152,15 @@ func (p *Proxy) Serve(ctx context.Context) error {
 			Director: p.httpDirector(),
 		}),
 	}
-
+	for _, o := range p.httpServerOpts {
+		o(tlsHttpServer)
+	}
 	p.mach.Go(func(routine machine.Routine) {
 		matcher := smux.Match(cmux.Any())
 		p.logger.Debug("starting secure http server", zap.String("address", matcher.Addr().String()))
-		if err := tlsHttpServer.Serve(matcher); err != nil && err != http.ErrServerClosed {
+		if err := tlsHttpServer.Serve(matcher); err != nil &&
+			err != http.ErrServerClosed &&
+			!strings.Contains(err.Error(), "mux: listener closed") {
 			p.logger.Error("TLS http proxy failure", zap.Error(err))
 		}
 	})
@@ -165,10 +174,13 @@ func (p *Proxy) Serve(ctx context.Context) error {
 		grpc.UnknownServiceHandler(proxy.TransparentHandler(p.gRPCDirector())),
 	}
 	gserver := grpc.NewServer(gopts...)
+	for _, o := range p.grpcServerOpts {
+		o(gserver)
+	}
 	p.mach.Go(func(routine machine.Routine) {
 		matcher := imux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
 		p.logger.Debug("starting gRPC server", zap.String("address", matcher.Addr().String()))
-		if err := gserver.Serve(matcher); err != nil {
+		if err := gserver.Serve(matcher); err != nil && !strings.Contains(err.Error(), "mux: listener closed") {
 			p.logger.Error("gRPC proxy failure", zap.Error(err))
 		}
 	})
@@ -186,10 +198,13 @@ func (p *Proxy) Serve(ctx context.Context) error {
 		}
 	})
 	tlsGserver := grpc.NewServer(gopts...)
+	for _, o := range p.grpcServerOpts {
+		o(tlsGserver)
+	}
 	p.mach.Go(func(routine machine.Routine) {
 		matcher := smux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
 		p.logger.Debug("starting secure gRPC server", zap.String("address", matcher.Addr().String()))
-		if err := tlsGserver.Serve(matcher); err != nil {
+		if err := tlsGserver.Serve(matcher); err != nil && !strings.Contains(err.Error(), "mux: listener closed") {
 			p.logger.Error("TLS gRPC proxy failure", zap.Error(err))
 		}
 	})
@@ -343,7 +358,7 @@ func (p *Proxy) getHttpRoute(req *http.Request) (string, error) {
 	for _, trig := range p.triggers {
 		result, err := trig.Trigger(data)
 		if err == nil {
-			target, ok := result["target"].(string)
+			target, ok := result["value"].(string)
 			if ok {
 				if !strings.Contains(target, "http") {
 					target = fmt.Sprintf("http://%s", target)
@@ -370,7 +385,7 @@ func (p *Proxy) getgRPCRoute(host, fullMethod string, md metadata.MD) (string, e
 	for _, trig := range p.triggers {
 		result, err := trig.Trigger(data)
 		if err == nil {
-			target, ok := result["target"].(string)
+			target, ok := result["value"].(string)
 			if ok {
 				return target, nil
 			}

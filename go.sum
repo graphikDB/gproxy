@@ -108,6 +108,8 @@ github.com/graphikDB/trigger v0.0.13 h1:GMPOvLWwHQ1i6GOU54iAe6qqNywIi8nZjclwgre/
 github.com/graphikDB/trigger v0.0.13/go.mod h1:RZn4pNk7i0xbur4PBtRR8L1IJedr1ll/mymrwY2M4dQ=
 github.com/graphikDB/trigger v0.0.14 h1:SuIlgsk7GO2pYYdFWkxxTNX1uZFa6KOUuLm/2yU8EeU=
 github.com/graphikDB/trigger v0.0.14/go.mod h1:RZn4pNk7i0xbur4PBtRR8L1IJedr1ll/mymrwY2M4dQ=
+github.com/graphikDB/trigger v0.0.15 h1:dfmZazMDk3lvq/pu+DX+1na0jWJuhE8T2gS+QbkKWNc=
+github.com/graphikDB/trigger v0.0.15/go.mod h1:RZn4pNk7i0xbur4PBtRR8L1IJedr1ll/mymrwY2M4dQ=
 github.com/grpc-ecosystem/go-grpc-middleware v1.0.0/go.mod h1:FiyG127CGDf3tlThmgyCl78X/SZQqEOJBCDaAfeWzPs=
 github.com/grpc-ecosystem/go-grpc-middleware v1.2.2 h1:FlFbCRLd5Jr4iYXZufAvgWN6Ao0JrI5chLINnUXDDr0=
 github.com/grpc-ecosystem/go-grpc-middleware v1.2.2/go.mod h1:EaizFBKfUKtMIF5iaDEhniwNedqGo9FuLFzppDr3uwI=

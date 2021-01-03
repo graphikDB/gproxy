@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/graphikDB/gproxy"
+	"github.com/graphikDB/gproxy/logger"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -18,14 +19,14 @@ func ExampleNew() {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("hello world"))
 	}))
-
+	defer srv.Close()
 	proxy, err := gproxy.New(ctx,
 		// serve unencrypted http/gRPC traffic on port 8080
 		gproxy.WithInsecurePort(8080),
 		// serve encrypted http/gRPC traffic on port 443
 		gproxy.WithSecurePort(443),
 		// if the request is http & the request host contains localhost, proxy to the target server
-		gproxy.WithTrigger(fmt.Sprintf(`this.http && this.host.contains('localhost') => { "target": "%s"}`, srv.URL)),
+		gproxy.WithTrigger(fmt.Sprintf(`this.http && this.host.contains('localhost') => '%s'`, srv.URL)),
 		// when deploying, set the letsencrypt allowed domains
 		gproxy.WithLetsEncryptHosts([]string{
 			// "www.graphikdb.io",
@@ -47,12 +48,14 @@ func Test(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("hello world"))
 	}))
-
+	defer srv.Close()
 	proxy, err := gproxy.New(ctx,
-		gproxy.WithInsecurePort(8080),
+		gproxy.WithInsecurePort(8081),
+		gproxy.WithSecurePort(8082),
+		gproxy.WithLogger(logger.New(true)),
 		gproxy.WithTrigger(
 			fmt.Sprintf(
-				`this.http && this.host.contains('localhost') => { "target": "%s"}`,
+				`this.http && this.host.contains("localhost") => "%s"`,
 				srv.URL,
 			)),
 		// when deploying, set the letsencrypt allowed domains
@@ -67,8 +70,8 @@ func Test(t *testing.T) {
 			t.Fatal(err.Error())
 		}
 	}()
-
-	resp, err := http.DefaultClient.Get("http://localhost:8080/")
+	time.Sleep(2 * time.Second)
+	resp, err := http.DefaultClient.Get("http://localhost:8081/")
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -81,6 +84,5 @@ func Test(t *testing.T) {
 		t.Fatal("failed to proxy in mem request")
 	}
 	cancel()
-	srv.Close()
 
 }

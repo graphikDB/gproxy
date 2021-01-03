@@ -7,6 +7,7 @@ import (
 	"github.com/graphikDB/trigger"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	"net/http"
 )
 
 // Opt is a function that configures a Proxy instance
@@ -99,6 +100,22 @@ func WithTrigger(triggerExpression string) Opt {
 func WithAutoRedirectHttps(redirect bool) Opt {
 	return func(p *Proxy) error {
 		p.redirectHttps = redirect
+		return nil
+	}
+}
+
+// WithHttpServerOpts executes the functions against the http(s) servers before they start
+func WithHttpServerOpts(opts ...func(srv *http.Server)) Opt {
+	return func(p *Proxy) error {
+		p.httpServerOpts = append(p.httpServerOpts, opts...)
+		return nil
+	}
+}
+
+// WithGrpcServerOpts executes the functions against the grpc servers before they start
+func WithGrpcServerOpts(opts ...func(srv *grpc.Server)) Opt {
+	return func(p *Proxy) error {
+		p.grpcServerOpts = append(p.grpcServerOpts, opts...)
 		return nil
 	}
 }

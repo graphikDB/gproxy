@@ -7,7 +7,7 @@ gproxy is a reverse proxy service AND library for creating flexible, expression-
 
     go get -u github.com/graphikDB/gproxy
     
-    docker pull graphikDB:gproxy:v0.0.8
+    docker pull graphikDB:gproxy:v0.0.10
     
     
 ```go
@@ -16,8 +16,10 @@ gproxy is a reverse proxy service AND library for creating flexible, expression-
 		gproxy.WithInsecurePort(8080),
 		// serve encrypted http/gRPC traffic on port 443
 		gproxy.WithSecurePort(443),
-		// if the request is http & the request host contains localhost, proxy to the target server
-		gproxy.WithTrigger(fmt.Sprintf(`this.http && this.host.contains('localhost') => { "target": "%s"}`, srv.URL)), // must return "target" attribute in the json map
+		// if the request is http & the request host contains localhost, proxy to the target http server
+		gproxy.WithTrigger(fmt.Sprintf(`this.http && this.host.contains('localhost') => "%s"`, httpServer.URL)),
+        // if the request is gRPC & the request host contains localhost, proxy to the target gRPC server
+		gproxy.WithTrigger(fmt.Sprintf(`this.grpc && this.host.contains('localhost') => "%s"`, grpcServer.URL)),
 		// when deploying, set the letsencrypt list of allowed domains
 		gproxy.WithLetsEncryptHosts([]string{
 			// "www.graphikdb.io",
@@ -52,7 +54,7 @@ gproxy is a reverse proxy service AND library for creating flexible, expression-
 - [x] Expression-Based Routing
 - [x] 12-Factor Config
 - [ ] Hot Reload Config
-- [x] Dockerized(graphikDB:gproxy:v0.0.8)
+- [x] Dockerized(graphikDB:gproxy:v0.0.10)
 - [x] K8s Deployment Manifest
 - [ ] Docker-Compose File
 
@@ -68,8 +70,8 @@ debug: true
 autocert:
   - "www.example.com"
 routing:
-  - "this.http && this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
-  - "this.grpc && this.host == 'localhost:8080' => { 'target': 'localhost:7820' }"
+  - "this.http && this.host == 'localhost:8080' => 'http://localhost:7821'"
+  - "this.grpc && this.host == 'localhost:8080' => 'localhost:7820'"
 server:
   insecure_port: 8080
   secure_port: 443
@@ -106,8 +108,8 @@ data:
     autocert:
       - "www.example.com"
     routing:
-      - "this.http && this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
-      - "this.grpc && this.host == 'localhost:8080' => { 'target': 'localhost:7820' }"
+      - "this.http && this.host == 'localhost:8080' => 'http://localhost:7821'"
+      - "this.grpc && this.host == 'localhost:8080' => 'localhost:7820'"
     server:
       insecure_port: 8080
       secure_port: 443
@@ -141,7 +143,7 @@ spec:
     spec:
       containers:
         - name: gproxy
-          image: graphikdb/gproxy:v0.0.8
+          image: graphikdb/gproxy:v0.0.10
           imagePullPolicy: Always
           ports:
             - containerPort: 80
