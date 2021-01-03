@@ -363,6 +363,7 @@ func (p *Proxy) httpDirector() func(r *http.Request) {
 	}
 }
 
+// (this.http, this.grpc, this.host, this.headers, this.path)
 func (p *Proxy) getHttpRoute(req *http.Request) (string, error) {
 	headers := map[string]interface{}{}
 	for k, v := range req.Header {
@@ -373,6 +374,7 @@ func (p *Proxy) getHttpRoute(req *http.Request) (string, error) {
 		"grpc":    false,
 		"host":    req.Host,
 		"headers": headers,
+		"path":    req.URL.Path,
 	}
 	p.mu.RLock()
 	defer p.mu.RUnlock()
@@ -391,17 +393,18 @@ func (p *Proxy) getHttpRoute(req *http.Request) (string, error) {
 	return "", errors.New("zero http routes for request")
 }
 
+// (this.http, this.grpc, this.host, this.headers, this.path)
 func (p *Proxy) getgRPCRoute(host, fullMethod string, md metadata.MD) (string, error) {
 	meta := map[string]interface{}{}
 	for k, v := range md {
 		meta[k] = v[0]
 	}
 	data := map[string]interface{}{
-		"http":     false,
-		"grpc":     true,
-		"host":     host,
-		"path":     fullMethod,
-		"metadata": meta,
+		"http":    false,
+		"grpc":    true,
+		"host":    host,
+		"path":    fullMethod,
+		"headers": meta,
 	}
 	p.mu.RLock()
 	defer p.mu.RUnlock()

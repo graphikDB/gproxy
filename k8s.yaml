@@ -12,8 +12,10 @@ data:
   gproxy.yaml: |-
     debug: true
     autocert:
+      ## expression attributes: (this.host<string>)
       policy: "this.host.contains('graphikdb.io')"
     routing:
+      ## expression attributes: (this.http<bool>, this.grpc<bool>, this.host<string>, this.headers<map>, this.path<string>)
       - "this.http && this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
       - "this.grpc && this.host == 'localhost:8080' => { 'target': 'localhost:7820' }"
     server:
@@ -50,7 +52,7 @@ spec:
     spec:
       containers:
         - name: gproxy
-          image: graphikdb/gproxy:v0.0.17
+          image: graphikdb/gproxy:v0.0.18
           imagePullPolicy: Always
           ports:
             - containerPort: 80

@@ -15,6 +15,7 @@ type Opt func(p *Proxy) error
 // WithAcmePolicy sets an decision expression that specifies which host names the Acme client may respond to
 // expression ref: github.com/graphikdb/trigger
 // ex this.host.contains('graphikdb.io')
+// expression attributes: (this.host<string>)
 func WithAcmePolicy(decision string) Opt {
 	return func(p *Proxy) error {
 		decision, err := trigger.NewDecision(decision)
@@ -38,7 +39,7 @@ func WithLogger(logger *logger.Logger) Opt {
 	}
 }
 
-// WithInsecurePort sets the port that non-encrypted traffic will be served on(optional)
+// WithInsecurePort sets the port that non-encrypted traffic will be served on(default: 80)
 func WithInsecurePort(insecurePort int) Opt {
 	return func(p *Proxy) error {
 		p.insecurePort = fmt.Sprintf(":%v", insecurePort)
@@ -46,7 +47,7 @@ func WithInsecurePort(insecurePort int) Opt {
 	}
 }
 
-// WithSecurePort sets the port that encrypted traffic will be served on(optional)
+// WithSecurePort sets the port that encrypted traffic will be served on(default: 443)
 func WithSecurePort(securePort int) Opt {
 	return func(p *Proxy) error {
 		p.securePort = fmt.Sprintf(":%v", securePort)
@@ -63,6 +64,7 @@ func WithCertCacheDir(certCache string) Opt {
 }
 
 // WithRoute adds a trigger/expression based route to the reverse proxy
+// expression attributes: (this.http<bool>, this.grpc<bool>, this.host<string>, this.headers<map>, this.path<string>)
 func WithRoute(triggerExpression string) Opt {
 	return func(p *Proxy) error {
 		trig, err := trigger.NewArrowTrigger(triggerExpression)
@@ -114,6 +116,7 @@ func WithGrpcsInit(opts ...func(srv *grpc.Server)) Opt {
 	}
 }
 
+// WithMiddlewares may be used as an HttpInit option to add http middlewares to a server
 func WithMiddlewares(middlewares ...func(handler http.Handler) http.Handler) func(server *http.Server) {
 	return func(server *http.Server) {
 		for _, ware := range middlewares {
