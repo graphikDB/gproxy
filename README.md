@@ -26,12 +26,12 @@ Library Documentation: [![GoDoc](https://godoc.org/github.com/graphikDB/gproxy?s
 		gproxy.WithSecurePort(443),
 		// if the request is http & the request host contains localhost, proxy to the target http server
 		// expression attributes: (this.http<bool>, this.grpc<bool>, this.host<string>, this.headers<map>, this.path<string>)
-        gproxy.WithRoute(fmt.Sprintf(`this.http && this.host.endsWith('graphikdb.io') => "%s"`, httpServer.URL)),
-        // if the request is gRPC & the request host contains localhost, proxy to the target gRPC server
+        	gproxy.WithRoute(fmt.Sprintf(`this.http && this.host.endsWith('graphikdb.io') => "%s"`, httpServer.URL)),
+        	// if the request is gRPC & the request host contains localhost, proxy to the target gRPC server
 		gproxy.WithRoute(fmt.Sprintf(`this.grpc && this.host.endsWith('graphikdb.io') => "%s"`, grpcServer.URL)),
 		// when deploying, set the letsencrypt list of allowed domains
 		// expression attributes: (this.host<string>)
-        gproxy.WithAcmePolicy("this.host.contains('graphikdb.io')"))
+       		gproxy.WithAcmePolicy("this.host.contains('graphikdb.io')"))
 	if err != nil {
 		fmt.Println(err.Error())
 		return
