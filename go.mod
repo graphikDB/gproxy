@@ -4,10 +4,9 @@ go 1.15
 
 require (
 	github.com/autom8ter/machine v1.1.2
-	github.com/golang/protobuf v1.4.3 // indirect
+	github.com/fsnotify/fsnotify v1.4.7
 	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/graphikDB/trigger v0.0.17
-	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2 // indirect
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/mwitkow/grpc-proxy v0.0.0-20181017164139-0f1106ef9c76
 	github.com/pkg/errors v0.9.1
@@ -28,6 +27,5 @@ require (
 	google.golang.org/grpc/examples v0.0.0-20201123174403-6d0f0110bf69 // indirect
 	google.golang.org/protobuf v1.25.0
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
-	gopkg.in/yaml.v2 v2.3.0 // indirect
 	honnef.co/go/tools v0.0.1-2020.1.4 // indirect
 )

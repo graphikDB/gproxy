@@ -16,8 +16,7 @@ data:
       policy: "this.host.contains('graphikdb.io')"
     routing:
       ## expression attributes: (this.http<bool>, this.grpc<bool>, this.host<string>, this.headers<map>, this.path<string>)
-      - "this.http && this.host == 'localhost:8080' => { 'target': 'http://localhost:7821' }"
-      - "this.grpc && this.host == 'localhost:8080' => { 'target': 'localhost:7820' }"
+      - "this.host.endsWith('api.graphikdb.io') => this.host.replace('api.graphikdb.io', 'graphik:7820')"
     server:
       insecure_port: 80
       secure_port: 443
@@ -50,9 +49,11 @@ spec:
       labels:
         app: gproxy
     spec:
+      restartPolicy: Always
       containers:
         - name: gproxy
-          image: graphikdb/gproxy:v1.0.1
+          image: graphikdb/gproxy:v1.0.2
+
           imagePullPolicy: Always
           ports:
             - containerPort: 80

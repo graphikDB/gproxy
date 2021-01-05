@@ -380,7 +380,10 @@ func (p *Proxy) getHttpRoute(req *http.Request) (string, error) {
 	defer p.mu.RUnlock()
 	for _, trig := range p.triggers {
 		result, err := trig.Trigger(data)
-		if err == nil {
+		if err != nil && err != trigger.ErrDecisionDenied {
+			return "", err
+		}
+		if result != nil {
 			target, ok := result["value"].(string)
 			if ok {
 				if !strings.Contains(target, "http") {
@@ -410,9 +413,18 @@ func (p *Proxy) getgRPCRoute(host, fullMethod string, md metadata.MD) (string, e
 	defer p.mu.RUnlock()
 	for _, trig := range p.triggers {
 		result, err := trig.Trigger(data)
-		if err == nil {
+		if err != nil && err != trigger.ErrDecisionDenied {
+			return "", err
+		}
+		if result != nil {
 			target, ok := result["value"].(string)
 			if ok {
+				if strings.Contains(target, "http://") {
+					target = strings.Split("http://", "")[1]
+				}
+				if strings.Contains(target, "https://") {
+					target = strings.Split("https://", "")[1]
+				}
 				return target, nil
 			}
 		}
